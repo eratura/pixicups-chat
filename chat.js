@@ -3,11 +3,12 @@
     "https://vhrjnaahofaqnggbdgbj.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocmpuYWFob2ZhcW5nZ2JkZ2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzQxMjQsImV4cCI6MjEwMzM1MDEyNH0.Z4A-IDO8XtJCNEGyeCdBPtGi0jC3FyrTi__1J3rpZ1I"
   );
-  var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null;
+  var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null, myColor=null;
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
   var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[], pinnedMsg='';
   var soundOn=false, lastCount=0, firstLoad=true;
   var lastMaxId=0;
+  var PALETTE=['#e79fc4','#c98fae','#b56b8f','#d4849c','#9b7bb8','#7b9bc4','#6bab9c','#c4a86b','#b58b6b','#8a8a8a'];
   var BEEP_URL = "https://eratura.github.io/pixicups-chat/750607__deadrobotmusic__notification-sound-1.wav";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
 
@@ -60,6 +61,24 @@
 
   window.pcSoon=function(){ say('private messages coming soon'); };
 
+  window.pcBuildColors=function(){
+    var box=document.getElementById('pc-colors');
+    if(!box) return;
+    box.innerHTML='';
+    PALETTE.forEach(function(c){
+      var sw=document.createElement('div');
+      sw.style.cssText='width:22px;height:22px;border-radius:50%;cursor:pointer;background:'+c+';border:2px solid '+(myColor===c?'#333':'transparent');
+      sw.addEventListener('click',function(){
+        var n=nameEl.value.trim();
+        if(!n||!myPass){say('log in first');return;}
+        sb.from('users').update({name_color:c}).eq('name',n).then(function(){
+          myColor=c; pcBuildColors(); say('color saved');
+        });
+      });
+      box.appendChild(sw);
+    });
+  };
+
   function updateAdminUI(){
     var b=document.getElementById('pc-modbox');
     if(b) b.style.display = (myLevel===4) ? 'block' : 'none';
@@ -83,11 +102,11 @@
   function verifyName(n){
     sb.from('users').select('*').eq('name',n).then(function(r){
       var rows=r.data||[];
-      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;updateAdminUI();return;}
+      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;updateAdminUI();return;}
       var u=rows[0];
-      if(u.password&&u.password===myPass){myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;}
-      else if(u.password){myLevel=1;myAvatar=null;myProfUrl=null;}
-      else {myLevel=2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;}
+      if(u.password&&u.password===myPass){myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;}
+      else if(u.password){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;}
+      else {myLevel=2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;}
       updateAdminUI();
     });
   }
@@ -96,13 +115,14 @@
     if(!myPass){say('log in first');return;}
     document.getElementById('pc-avpreview').src = myAvatar||'';
     document.getElementById('pc-profurl').value = myProfUrl||'';
+    pcBuildColors();
     updateAdminUI();
     document.getElementById('pc-profile').classList.add('show');
   };
   window.pcCloseProfile=function(){document.getElementById('pc-profile').classList.remove('show');};
 
   window.pcLogout=function(){
-    myPass=null; myLevel=1; myAvatar=null; myProfUrl=null;
+    myPass=null; myLevel=1; myAvatar=null; myProfUrl=null; myColor=null;
     localStorage.removeItem('pc_me');
     nameEl.value='';
     pcCloseProfile();
@@ -242,7 +262,7 @@
         return;
       }
       if(u.password===p){
-        myPass=p;myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;
+        myPass=p;myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;
         localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
         done();say('logged in');load();
         return;
@@ -453,10 +473,11 @@
                 tools+='</div></div>';
               }
               var nameHtml = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
+              var colorStyle = m.name_color ? ' style="color:'+m.name_color+'"' : '';
               var body='';
               if(m.text)body+=esc(censor(m.text));
               if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
-              d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme">'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
+              d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme"'+colorStyle+'>'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
               box.appendChild(d);
             });
             if(atBottom){
@@ -525,7 +546,7 @@
 
   function ins(n,t,img){
     sendTimes.push(Date.now());
-    sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
+    sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,name_color:myColor,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
       document.getElementById('pc-text').value='';
       document.getElementById('pc-imgfile').value='';
       document.getElementById('pc-imgpreview').style.display='none';
