@@ -316,6 +316,72 @@
     reader.readAsDataURL(f);
   });
 
+    document.getElementById('pc-imgfile').addEventListener('change',function(){
+    var f=this.files[0];
+    var box=document.getElementById('pc-imgpreview');
+    if(!f){ box.style.display='none'; return; }
+    var reader=new FileReader();
+    reader.onload=function(e){
+      document.getElementById('pc-imgthumb').src=e.target.result;
+      box.style.display='flex';
+    };
+    reader.readAsDataURL(f);
+  });
+
+  window.pcPurgeUser=function(name){
+    ask('Delete all messages from '+name+'?',function(){
+      sb.from('messages').delete().eq('name',name).then(function(){
+        say('deleted all from '+name);
+        pcOpenUsers();
+        load();
+      });
+    });
+  };
+
+  window.pcOpenUsers=function(){
+    var body=document.getElementById('pc-usersbody');
+    body.innerHTML='loading...';
+    document.getElementById('pc-users').classList.add('show');
+    var cutoff=new Date(Date.now()-24*60*60*1000).toISOString();
+    sb.from('messages').select('name,fingerprint,created_at').gte('created_at',cutoff).order('created_at',{ascending:false}).then(function(r){
+      var rows=r.data||[];
+      if(!rows.length){ body.innerHTML='<div style="color:#999;padding:8px">no activity in 24h</div>'; return; }
+      var seen={}, order=[];
+      rows.forEach(function(m){
+        if(!seen[m.name]){
+          seen[m.name]={count:0,print:m.fingerprint};
+          order.push(m.name);
+        }
+        seen[m.name].count++;
+        if(!seen[m.name].print && m.fingerprint) seen[m.name].print=m.fingerprint;
+      });
+      body.innerHTML='';
+      order.forEach(function(nm){
+        var u=seen[nm];
+        var row=document.createElement('div');
+        row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:6px 4px;border-bottom:1px solid #f7e3ee;gap:6px';
+        var left=document.createElement('div');
+        left.style.cssText='flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+        left.innerHTML='<span style="font-weight:bold">'+esc(nm)+'</span> <span style="color:#aaa;font-size:11px">'+u.count+'</span>';
+        var banBtn=document.createElement('button');
+        banBtn.className='pc-pbtn';
+        banBtn.style.cssText='padding:3px 8px;font-size:10px;flex:0 0 auto';
+        var already=bannedList.indexOf(nm)!==-1;
+        banBtn.textContent=already?'unban':'ban';
+        banBtn.addEventListener('click',function(){
+          if(already) pcUnban(nm); else pcBan(nm,u.print);
+        });
+        var purgeBtn=document.createElement('button');
+        purgeBtn.className='pc-pbtn';
+        purgeBtn.style.cssText='padding:3px 8px;font-size:10px;flex:0 0 auto';
+        purgeBtn.textContent='purge';
+        purgeBtn.addEventListener('click',function(){ pcPurgeUser(nm); });
+        row.appendChild(left); row.appendChild(banBtn); row.appendChild(purgeBtn);
+        body.appendChild(row);
+      });
+    });
+  };
+
   function load(){
     sb.from('filters').select('word').then(function(fres){
       filterList=(fres.data||[]).map(function(x){return x.word;});
