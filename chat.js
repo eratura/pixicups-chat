@@ -16,6 +16,21 @@
 
   function say(m){statusEl.textContent=m;setTimeout(function(){if(statusEl.textContent===m)statusEl.textContent='';},3000);}
 
+  function ask(text,onYes){
+    document.getElementById('pc-confirmtext').textContent=text;
+    var box=document.getElementById('pc-confirm');
+    var yes=document.getElementById('pc-confirmyes');
+    var fresh=yes.cloneNode(true);
+    yes.parentNode.replaceChild(fresh,yes);
+    fresh.addEventListener('click',function(){
+      box.classList.remove('show');
+      onYes();
+    });
+    box.classList.add('show');
+  }
+
+  window.pcSoon=function(){ say('private messages coming soon'); };
+
   function updateAdminUI(){
     var b=document.getElementById('pc-modbox');
     if(b) b.style.display = (myLevel===4) ? 'block' : 'none';
@@ -63,10 +78,10 @@
   };
 
   window.pcClearAll=function(){
-    if(!confirm('Delete ALL messages? This cannot be undone.'))return;
-    if(!confirm('Really sure? Everything will be gone.'))return;
-    sb.from('messages').delete().neq('id',0).then(function(){
-      say('chat cleared'); pcCloseProfile(); load();
+    ask('Delete ALL messages? This cannot be undone.',function(){
+      sb.from('messages').delete().neq('id',0).then(function(){
+        say('chat cleared'); pcCloseProfile(); load();
+      });
     });
   };
 
@@ -172,12 +187,14 @@
   });
 
   window.pcBan=function(name){
-    if(!confirm('Ban '+name+'?'))return;
-    sb.from('bans').insert({name:name}).then(function(){say(name+' banned');load();});
+    ask('Ban '+name+'?',function(){
+      sb.from('bans').insert({name:name}).then(function(){say(name+' banned');load();});
+    });
   };
   window.pcUnban=function(name){
-    if(!confirm('Unban '+name+'?'))return;
-    sb.from('bans').delete().eq('name',name).then(function(){say(name+' unbanned');load();});
+    ask('Unban '+name+'?',function(){
+      sb.from('bans').delete().eq('name',name).then(function(){say(name+' unbanned');load();});
+    });
   };
 
   function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
@@ -226,7 +243,7 @@
                 else tools+='<button onclick="pcBan(\''+esc(m.name)+'\')">ban user</button>';
               }
               if(canDel) tools+='<button onclick="pcDel('+m.id+')">delete</button>';
-              tools+='<button onclick="alert(\'coming soon\')">private message</button>';
+              tools+='<button onclick="pcSoon()">private message</button>';
               tools+='</div></div>';
             }
             var nameHtml = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
@@ -242,7 +259,11 @@
     });
   }
 
-  window.pcDel=function(id){if(!confirm('Delete this message?'))return;sb.from('messages').delete().eq('id',id).then(load);};
+  window.pcDel=function(id){
+    ask('Delete this message?',function(){
+      sb.from('messages').delete().eq('id',id).then(load);
+    });
+  };
 
   window.pcSend=function(){
     var n=nameEl.value.trim();
