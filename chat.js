@@ -369,13 +369,17 @@
         var already=bannedList.indexOf(nm)!==-1;
         banBtn.textContent=already?'unban':'ban';
         banBtn.addEventListener('click',function(){
+          document.getElementById('pc-users').classList.remove('show');
           if(already) pcUnban(nm); else pcBan(nm,u.print);
         });
         var purgeBtn=document.createElement('button');
         purgeBtn.className='pc-pbtn';
         purgeBtn.style.cssText='padding:3px 8px;font-size:10px;flex:0 0 auto';
         purgeBtn.textContent='purge';
-        purgeBtn.addEventListener('click',function(){ pcPurgeUser(nm); });
+        purgeBtn.addEventListener('click',function(){
+          document.getElementById('pc-users').classList.remove('show');
+          pcPurgeUser(nm);
+        });
         row.appendChild(left); row.appendChild(banBtn); row.appendChild(purgeBtn);
         body.appendChild(row);
       });
