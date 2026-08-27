@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>pixicups chat</title>
+<link rel="stylesheet" href="https://eratura.github.io/pixicups-chat/chat.css">
+<style>
+body { margin:0; padding:0; background:#FFF2FB; }
+#pc-float { position:static !important; }
+#pc-panel {
+  display:flex !important;
+  width:100% !important; height:100vh !important;
+  border:none !important; border-radius:0 !important;
+  margin:0 !important; box-shadow:none !important;
+}
+.pc-tab, #pc-toggle { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="pc-float">
+<input type="checkbox" id="pc-toggle" checked>
+<div id="pc-panel">
+<div class="pc-header">♡ leave a note ♡</div>
+<div id="pc-banner" style="display:none;text-align:center;background:#fce9f2;color:#b5849c;font-size:11px;padding:5px;font-family:'Pixelify Sans',cursive">♡ members only ♡</div>
+<div id="pc-pinned" style="display:none;text-align:center;background:#fff6fa;color:#a58394;font-size:11px;padding:6px 10px;border-bottom:1px solid #f3cddd"></div>
+<div id="pc-messages"></div>
+
+<div id="pc-profile" class="pc-overlay">
+<img id="pc-avpreview" src="">
+<button class="pc-pbtn" onclick="document.getElementById('pc-avfile').click()">change picture</button>
+<input type="file" id="pc-avfile" accept="image/*">
+<label>profile url:</label>
+<input type="text" id="pc-profurl" placeholder="https://">
+<div style="display:flex;gap:8px">
+<button class="pc-pbtn" onclick="pcSaveProfile()">save</button>
+<button class="pc-pbtn" onclick="pcCloseProfile()">close</button>
+</div>
+<div id="pc-modbox" style="display:none;margin-top:14px;text-align:center">
+<div style="font-size:11px;color:#999;margin-bottom:6px">mod controls</div>
+<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+<button class="pc-pbtn" onclick="pcOpenPin()">pinned</button>
+<button class="pc-pbtn" onclick="pcClearAll()">clear chat</button>
+<button class="pc-pbtn" id="pc-pausebtn" onclick="pcTogglePause()">pause chat</button>
+<button class="pc-pbtn" id="pc-regbtn" onclick="pcToggleRegOnly()">members only</button>
+<button class="pc-pbtn" onclick="pcOpenUsers()">users</button>
+<button class="pc-pbtn" onclick="pcOpenBanList()">ban list</button>
+<button class="pc-pbtn" onclick="document.getElementById('pc-automod').classList.add('show')">automod</button>
+</div>
+</div>
+<div style="margin-top:18px">
+<button class="pc-pbtn" onclick="pcLogout()">log out</button>
+</div>
+</div>
+
+<div id="pc-pw" class="pc-overlay">
+<div id="pc-pwtitle">password</div>
+<input type="password" id="pc-pwinput" placeholder="password">
+<div id="pc-pwmsg"></div>
+<div style="display:flex;gap:8px">
+<button class="pc-pbtn" onclick="pcPwSubmit()">go</button>
+<button class="pc-pbtn" onclick="document.getElementById('pc-pw').classList.remove('show')">cancel</button>
+</div>
+</div>
+
+<div id="pc-confirm" class="pc-overlay">
+<div id="pc-confirmtext" style="font-size:13px;color:#666;text-align:center;padding:0 20px"></div>
+<div style="display:flex;gap:8px">
+<button class="pc-pbtn" id="pc-confirmyes">yes</button>
+<button class="pc-pbtn" onclick="document.getElementById('pc-confirm').classList.remove('show')">cancel</button>
+</div>
+</div>
+
+<div id="pc-banlist" class="pc-overlay">
+<div style="font-size:13px;color:#666">banned users</div>
+<div id="pc-banlistbody" style="max-height:300px;overflow-y:auto;width:260px;font-size:12px"></div>
+<button class="pc-pbtn" onclick="document.getElementById('pc-banlist').classList.remove('show')">close</button>
+</div>
+
+<div id="pc-users" class="pc-overlay">
+<div style="font-size:13px;color:#666">recent users (24h)</div>
+<div id="pc-usersbody" style="max-height:320px;overflow-y:auto;width:290px;font-size:12px"></div>
+<button class="pc-pbtn" onclick="document.getElementById('pc-users').classList.remove('show')">close</button>
+</div>
+
+<div id="pc-pin" class="pc-overlay">
+<div style="font-size:13px;color:#666">pinned message</div>
+<input type="text" id="pc-pininput" placeholder="leave empty to remove" maxlength="200">
+<div style="display:flex;gap:8px">
+<button class="pc-pbtn" onclick="pcSavePin()">save</button>
+<button class="pc-pbtn" onclick="document.getElementById('pc-pin').classList.remove('show')">cancel</button>
+</div>
+</div>
+
+<div id="pc-automod" class="pc-overlay">
+<div style="font-size:13px;color:#666">automod</div>
+<div style="display:flex;flex-direction:column;gap:10px;width:240px">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<span style="font-size:12px;color:#666">block links</span>
+<button class="pc-pbtn" id="pc-linkbtn" onclick="pcToggleLinks()" style="padding:4px 12px;font-size:11px">off</button>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center">
+<span style="font-size:12px;color:#666">spam protection</span>
+<button class="pc-pbtn" id="pc-spambtn" onclick="pcToggleSpam()" style="padding:4px 12px;font-size:11px">on</button>
+</div>
+</div>
+<button class="pc-pbtn" onclick="document.getElementById('pc-automod').classList.remove('show')">close</button>
+</div>
+
+<div id="pc-zoom" onclick="this.classList.remove('show')"><img src=""></div>
+
+<div id="pc-bar">
+<div id="pc-toprow">
+<i class="fa fa-user" onclick="pcOpenProfile()" title="your profile"></i>
+<input id="pc-name" placeholder="name" maxlength="25">
+<button class="pc-iconbtn" onclick="pcClaim()" title="log in"><i class="fa fa-sign-in"></i></button>
+<button class="pc-iconbtn" id="pc-soundbtn" onclick="pcToggleSound()" title="sound"><i class="fa fa-volume-up"></i></button>
+</div>
+<div id="pc-status"></div>
+<div id="pc-botrow">
+<button class="pc-iconbtn" onclick="document.getElementById('pc-imgfile').click()" title="image"><i class="fa fa-picture-o"></i></button>
+<input type="file" id="pc-imgfile" accept="image/*">
+<div id="pc-imgpreview" style="display:none;align-items:center;gap:4px">
+<img id="pc-imgthumb" style="width:26px;height:26px;object-fit:cover;border-radius:3px">
+<span onclick="pcClearImg()" style="cursor:pointer;color:#c98fae;font-size:13px">&times;</span>
+</div>
+<input id="pc-text" placeholder="message" maxlength="500">
+<button class="pc-iconbtn" onclick="pcSend()" title="post"><i class="fa fa-caret-right" style="font-size:19px"></i></button>
+</div>
+</div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://eratura.github.io/pixicups-chat/chat.js"></script>
+</body>
+</html>
