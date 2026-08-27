@@ -4,6 +4,7 @@
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocmpuYWFob2ZhcW5nZ2JkZ2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzQxMjQsImV4cCI6MjEwMzM1MDEyNH0.Z4A-IDO8XtJCNEGyeCdBPtGi0jC3FyrTi__1J3rpZ1I"
   );
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null;
+  var bannedList=[];
   var soundOn=false, lastCount=0, firstLoad=true;
   var BEEP_URL = "";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
@@ -145,7 +146,12 @@
 
   window.pcBan=function(name){
     if(!confirm('Ban '+name+'?'))return;
-    sb.from('bans').insert({name:name}).then(function(){say(name+' banned');});
+    sb.from('bans').insert({name:name}).then(function(){say(name+' banned');load();});
+  };
+
+  window.pcUnban=function(name){
+    if(!confirm('Unban '+name+'?'))return;
+    sb.from('bans').delete().eq('name',name).then(function(){say(name+' unbanned');load();});
   };
 
   function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
@@ -164,35 +170,42 @@
   };
 
   function load(){
-    var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
-    sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:true}).then(function(r){
-      var rows=r.data||[],box=document.getElementById('pc-messages');
-      if(!firstLoad && rows.length>lastCount) playBeep();
-      lastCount=rows.length; firstLoad=false;
-      var atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
-      box.innerHTML='';
-      var myName=nameEl.value.trim();
-      rows.forEach(function(m){
-        var lvl=m.level||1,d=document.createElement('div');
-        d.className='pc-msg pc-lvl'+lvl;
-        var pic=m.avatar_url?'<img class="pc-pic" src="'+m.avatar_url+'" onclick="pcZoom(\''+m.avatar_url+'\')">':'';
-        var canDel=(myLevel===4)||(myPass&&m.name===myName);
-        var tools='';
-        if(canDel||myLevel===4||myPass){
-          tools='<div class="pc-tools"><span class="pc-dots" onclick="pcToggleTray('+m.id+',event)"><i class="fa fa-ellipsis-v"></i></span><div class="pc-tray" id="tray'+m.id+'">';
-          if(myLevel===4) tools+='<button onclick="pcBan(\''+esc(m.name)+'\')">ban user</button>';
-          if(canDel) tools+='<button onclick="pcDel('+m.id+')">delete</button>';
-          tools+='<button onclick="alert(\'coming soon\')">private message</button>';
-          tools+='</div></div>';
-        }
-        var nameHtml = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
-        var body='';
-        if(m.text)body+=esc(m.text);
-        if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
-        d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme">'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
-        box.appendChild(d);
+    sb.from('bans').select('name').then(function(bres){
+      bannedList=(bres.data||[]).map(function(x){return x.name;});
+      var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
+      sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:true}).then(function(r){
+        var rows=r.data||[],box=document.getElementById('pc-messages');
+        if(!firstLoad && rows.length>lastCount) playBeep();
+        lastCount=rows.length; firstLoad=false;
+        var atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
+        box.innerHTML='';
+        var myName=nameEl.value.trim();
+        rows.forEach(function(m){
+          var lvl=m.level||1,d=document.createElement('div');
+          d.className='pc-msg pc-lvl'+lvl;
+          var pic=m.avatar_url?'<img class="pc-pic" src="'+m.avatar_url+'" onclick="pcZoom(\''+m.avatar_url+'\')">':'';
+          var canDel=(myLevel===4)||(myPass&&m.name===myName);
+          var isBanned=bannedList.indexOf(m.name)!==-1;
+          var tools='';
+          if(canDel||myLevel===4||myPass){
+            tools='<div class="pc-tools"><span class="pc-dots" onclick="pcToggleTray('+m.id+',event)"><i class="fa fa-ellipsis-v"></i></span><div class="pc-tray" id="tray'+m.id+'">';
+            if(myLevel===4){
+              if(isBanned) tools+='<button onclick="pcUnban(\''+esc(m.name)+'\')">unban user</button>';
+              else tools+='<button onclick="pcBan(\''+esc(m.name)+'\')">ban user</button>';
+            }
+            if(canDel) tools+='<button onclick="pcDel('+m.id+')">delete</button>';
+            tools+='<button onclick="alert(\'coming soon\')">private message</button>';
+            tools+='</div></div>';
+          }
+          var nameHtml = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
+          var body='';
+          if(m.text)body+=esc(m.text);
+          if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
+          d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme">'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
+          box.appendChild(d);
+        });
+        if(atBottom)box.scrollTop=box.scrollHeight;
       });
-      if(atBottom)box.scrollTop=box.scrollHeight;
     });
   }
 
