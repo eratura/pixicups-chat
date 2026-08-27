@@ -3,10 +3,13 @@
     "https://vhrjnaahofaqnggbdgbj.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocmpuYWFob2ZhcW5nZ2JkZ2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzQxMjQsImV4cCI6MjEwMzM1MDEyNH0.Z4A-IDO8XtJCNEGyeCdBPtGi0jC3FyrTi__1J3rpZ1I"
   );
+
+  var BAD_WORDS = ["slur1","slur2"];
+  var RATE_LIMIT_MS = 4000;
+
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null;
-  var bannedList=[];
+  var bannedList=[], lastPost=0, pinnedText='';
   var soundOn=false, lastCount=0, firstLoad=true;
-  var BEEP_URL = "";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
 
   var saved=localStorage.getItem('pc_me');
@@ -16,14 +19,19 @@
 
   function say(m){statusEl.textContent=m;setTimeout(function(){if(statusEl.textContent===m)statusEl.textContent='';},3000);}
 
+  function updateAdminBtn(){
+    document.getElementById('pc-adminbtn').style.display = (myLevel===4) ? 'inline-block' : 'none';
+  }
+
   function verifyName(n){
     sb.from('users').select('*').eq('name',n).then(function(r){
       var rows=r.data||[];
-      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;return;}
+      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;updateAdminBtn();return;}
       var u=rows[0];
       if(u.password&&u.password===myPass){myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;}
       else if(u.password){myLevel=1;myAvatar=null;myProfUrl=null;}
       else {myLevel=2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;}
+      updateAdminBtn();
     });
   }
 
@@ -35,10 +43,44 @@
   };
   window.pcCloseProfile=function(){document.getElementById('pc-profile').classList.remove('show');};
 
+  window.pcOpenAdmin=function(){
+    if(myLevel!==4){say('admins only');return;}
+    document.getElementById('pc-pininput').value = pinnedText||'';
+    document.getElementById('pc-admin').classList.add('show');
+  };
+
+  window.pcSavePin=function(){
+    var v=document.getElementById('pc-pininput').value.trim();
+    sb.from('settings').upsert({key:'pinned',value:v}).then(function(){
+      pinnedText=v; renderPin(); say('pin saved');
+      document.getElementById('pc-admin').classList.remove('show');
+    });
+  };
+
+  window.pcClearAll=function(){
+    if(!confirm('Delete ALL messages? This cannot be undone.'))return;
+    if(!confirm('Really sure?'))return;
+    sb.from('messages').delete().neq('id',0).then(function(){
+      say('all messages deleted'); load();
+      document.getElementById('pc-admin').classList.remove('show');
+    });
+  };
+
+  function renderPin(){
+    var el=document.getElementById('pc-pinned');
+    if(pinnedText){
+      el.innerHTML='<i class="fa fa-thumb-tack"></i>'+esc(pinnedText);
+      el.classList.add('show');
+    } else {
+      el.classList.remove('show');
+    }
+  }
+
   window.pcLogout=function(){
     myPass=null; myLevel=1; myAvatar=null; myProfUrl=null;
     localStorage.removeItem('pc_me');
     nameEl.value='';
+    updateAdminBtn();
     pcCloseProfile();
     say('logged out');
     load();
@@ -69,12 +111,12 @@
     if(!p){msg.textContent='enter a password';return;}
     sb.from('users').select('*').eq('name',n).then(function(r){
       var rows=r.data||[];
-      function done(){document.getElementById('pc-pw').classList.remove('show');}
+      function done(){document.getElementById('pc-pw').classList.remove('show');updateAdminBtn();load();}
       if(!rows.length){
         sb.from('users').insert({name:n,password:p,level:2}).then(function(){
           myPass=p;myLevel=2;
           localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
-          done();say('name claimed');load();
+          done();say('name claimed');
         });
         return;
       }
@@ -83,14 +125,14 @@
         sb.from('users').update({password:p,level:2}).eq('name',n).then(function(){
           myPass=p;myLevel=2;
           localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
-          done();say('name claimed');load();
+          done();say('name claimed');
         });
         return;
       }
       if(u.password===p){
         myPass=p;myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;
         localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
-        done();say('logged in');load();
+        done();say('logged in');
         return;
       }
       msg.textContent='wrong password';
@@ -101,6 +143,7 @@
     soundOn=!soundOn;
     localStorage.setItem('pc_sound', soundOn?'1':'0');
     updateSoundBtn();
+    if(soundOn) playBeep();
   };
   function updateSoundBtn(){
     var b=document.getElementById('pc-soundbtn');
@@ -108,8 +151,20 @@
     b.innerHTML = soundOn ? '<i class="fa fa-volume-up"></i>' : '<i class="fa fa-volume-off"></i>';
   }
   function playBeep(){
-    if(!soundOn||!BEEP_URL)return;
-    try{ new Audio(BEEP_URL).play(); }catch(e){}
+    if(!soundOn)return;
+    try{
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if(!AC) return;
+      var ctx = new AC();
+      var osc = ctx.createOscillator();
+      var gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type='sine';
+      osc.frequency.value=880;
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.25);
+      osc.start(); osc.stop(ctx.currentTime+0.25);
+    }catch(e){}
   }
 
   document.getElementById('pc-avfile').onchange=function(){
@@ -130,6 +185,7 @@
 
   nameEl.addEventListener('blur',function(){var n=nameEl.value.trim();if(n)verifyName(n);});
   document.getElementById('pc-pwinput').addEventListener('keydown',function(e){if(e.key==='Enter')pcPwSubmit();});
+  document.getElementById('pc-pininput').addEventListener('keydown',function(e){if(e.key==='Enter')pcSavePin();});
 
   window.pcToggleTray=function(id,ev){
     ev.stopPropagation();
@@ -148,13 +204,30 @@
     if(!confirm('Ban '+name+'?'))return;
     sb.from('bans').insert({name:name}).then(function(){say(name+' banned');load();});
   };
-
   window.pcUnban=function(name){
     if(!confirm('Unban '+name+'?'))return;
     sb.from('bans').delete().eq('name',name).then(function(){say(name+' unbanned');load();});
   };
 
   function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+  function censor(t){
+    var out=t;
+    for(var i=0;i<BAD_WORDS.length;i++){
+      var w=BAD_WORDS[i];
+      if(!w) continue;
+      var re=new RegExp(w,'gi');
+      out=out.replace(re,function(m){return new Array(m.length+1).join('*');});
+    }
+    return out;
+  }
+
+  function highlightAts(html, myName){
+    if(!myName) return html;
+    var re=new RegExp('@'+myName,'gi');
+    return html.replace(re,function(m){return '<span class="pc-at">'+m+'</span>';});
+  }
+
   function ago(t){
     var s=Math.floor((Date.now()-new Date(t).getTime())/1000);
     if(s<60)return s+' secs ago';
@@ -169,6 +242,14 @@
     z.classList.add('show');
   };
 
+  function loadPin(){
+    sb.from('settings').select('value').eq('key','pinned').then(function(r){
+      var rows=r.data||[];
+      pinnedText = rows.length ? (rows[0].value||'') : '';
+      renderPin();
+    });
+  }
+
   function load(){
     sb.from('bans').select('name').then(function(bres){
       bannedList=(bres.data||[]).map(function(x){return x.name;});
@@ -182,7 +263,8 @@
         var myName=nameEl.value.trim();
         rows.forEach(function(m){
           var lvl=m.level||1,d=document.createElement('div');
-          d.className='pc-msg pc-lvl'+lvl;
+          var mentioned = myName && m.text && m.text.toLowerCase().indexOf('@'+myName.toLowerCase())!==-1;
+          d.className='pc-msg pc-lvl'+lvl+(mentioned?' pc-mention':'');
           var pic=m.avatar_url?'<img class="pc-pic" src="'+m.avatar_url+'" onclick="pcZoom(\''+m.avatar_url+'\')">':'';
           var canDel=(myLevel===4)||(myPass&&m.name===myName);
           var isBanned=bannedList.indexOf(m.name)!==-1;
@@ -199,7 +281,7 @@
           }
           var nameHtml = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
           var body='';
-          if(m.text)body+=esc(m.text);
+          if(m.text) body+=highlightAts(esc(censor(m.text)), myName);
           if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
           d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme">'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
           box.appendChild(d);
@@ -214,6 +296,10 @@
   window.pcSend=function(){
     var n=nameEl.value.trim();
     if(!n){say('enter a name');return;}
+    if(Date.now()-lastPost < RATE_LIMIT_MS){
+      say('slow down a sec');
+      return;
+    }
     var t=document.getElementById('pc-text').value.trim();
     var f=document.getElementById('pc-imgfile').files[0];
     if(!t&&!f)return;
@@ -227,6 +313,7 @@
           return;
         }
         if(f&&myLevel<2){say('log in to post images');return;}
+        lastPost=Date.now();
         localStorage.setItem('pc_me',JSON.stringify({name:n,pass:myPass}));
         if(f){
           var path=Date.now()+'_'+Math.random().toString(36).slice(2);
@@ -248,5 +335,8 @@
   }
 
   document.getElementById('pc-text').addEventListener('keydown',function(e){if(e.key==='Enter')pcSend();});
-  load();setInterval(load,3000);
+  updateAdminBtn();
+  loadPin();
+  load();
+  setInterval(load,3000);
 })();
