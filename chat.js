@@ -5,7 +5,7 @@
   );
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null;
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
-  var filterList=[], lastSent=0;
+  var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[];
   var soundOn=false, lastCount=0, firstLoad=true;
   var BEEP_URL = "";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
@@ -64,6 +64,10 @@
     if(g) g.textContent = regOnly ? 'allow guests' : 'members only';
     var bn=document.getElementById('pc-banner');
     if(bn) bn.style.display = regOnly ? 'block' : 'none';
+    var lb=document.getElementById('pc-linkbtn');
+    if(lb) lb.textContent = blockLinks ? 'on' : 'off';
+    var sp=document.getElementById('pc-spambtn');
+    if(sp) sp.textContent = antiSpam ? 'on' : 'off';
   }
 
   function verifyName(n){
@@ -128,6 +132,22 @@
       regOnly = !regOnly;
       updateAdminUI();
       say(regOnly ? 'members only' : 'guests allowed');
+    });
+  };
+
+  window.pcToggleLinks=function(){
+    var v = blockLinks ? 'false' : 'true';
+    sb.from('settings').update({value:v}).eq('key','blocklinks').then(function(){
+      blockLinks=!blockLinks; updateAdminUI();
+      say(blockLinks?'links blocked':'links allowed');
+    });
+  };
+
+  window.pcToggleSpam=function(){
+    var v = antiSpam ? 'false' : 'true';
+    sb.from('settings').update({value:v}).eq('key','antispam').then(function(){
+      antiSpam=!antiSpam; updateAdminUI();
+      say(antiSpam?'spam protection on':'spam protection off');
     });
   };
 
@@ -304,6 +324,8 @@
         srows.forEach(function(s){
           if(s.key==='paused') chatPaused = s.value==='true';
           if(s.key==='regonly') regOnly = s.value==='true';
+          if(s.key==='blocklinks') blockLinks = s.value==='true';
+          if(s.key==='antispam') antiSpam = s.value==='true';
         });
         updateAdminUI();
         var ph=document.getElementById('pc-text');
@@ -370,10 +392,15 @@
     if(chatPaused && myLevel<4){say('chat is paused');return;}
     if(regOnly && myLevel<2){say('members only — log in to post');return;}
     if(bannedPrints.indexOf(myPrint)!==-1){say('you are banned');return;}
-    if(myLevel<4){
-      var since=Date.now()-lastSent;
-      if(since<4000){
-        say('slow down — wait '+Math.ceil((4000-since)/1000)+'s');
+    if(blockLinks && myLevel<4 && /https?:\/\/|www\.|\.[a-z]{2,}\//i.test(t)){
+      say('links are not allowed');
+      return;
+    }
+    if(antiSpam && myLevel<4){
+      var now=Date.now();
+      sendTimes=sendTimes.filter(function(x){return now-x<10000;});
+      if(sendTimes.length>=6){
+        say('slow down a little');
         return;
       }
     }
@@ -403,7 +430,7 @@
   };
 
   function ins(n,t,img){
-    lastSent=Date.now();
+    sendTimes.push(Date.now());
     sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
       document.getElementById('pc-text').value='';
       document.getElementById('pc-imgfile').value='';
