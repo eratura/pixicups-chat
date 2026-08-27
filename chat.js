@@ -4,7 +4,7 @@
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocmpuYWFob2ZhcW5nZ2JkZ2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzQxMjQsImV4cCI6MjEwMzM1MDEyNH0.Z4A-IDO8XtJCNEGyeCdBPtGi0jC3FyrTi__1J3rpZ1I"
   );
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null;
-  var bannedList=[], chatPaused=false;
+  var bannedList=[], chatPaused=false, filterList=[];
   var soundOn=false, lastCount=0, firstLoad=true;
   var BEEP_URL = "";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
@@ -15,6 +15,23 @@
   updateSoundBtn();
 
   function say(m){statusEl.textContent=m;setTimeout(function(){if(statusEl.textContent===m)statusEl.textContent='';},3000);}
+
+  function censor(text){
+    if(!text||!filterList.length) return text;
+    var out=text;
+    for(var i=0;i<filterList.length;i++){
+      var w=filterList[i];
+      if(!w) continue;
+      var safe=w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      var re=new RegExp('\\b'+safe+'\\b','gi');
+      out=out.replace(re,function(match){
+        var stars='';
+        for(var k=0;k<match.length;k++) stars+='*';
+        return stars;
+      });
+    }
+    return out;
+  }
 
   function ask(text,onYes){
     document.getElementById('pc-confirmtext').textContent=text;
@@ -213,47 +230,50 @@
   };
 
   function load(){
-    sb.from('settings').select('*').eq('key','paused').then(function(sres){
-      var srows=sres.data||[];
-      chatPaused = srows.length && srows[0].value==='true';
-      updateAdminUI();
-      var ph=document.getElementById('pc-text');
-      if(ph) ph.placeholder = (chatPaused && myLevel<4) ? 'chat is paused' : 'message';
-      sb.from('bans').select('name').then(function(bres){
-        bannedList=(bres.data||[]).map(function(x){return x.name;});
-        var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
-        sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:true}).then(function(r){
-          var rows=r.data||[],box=document.getElementById('pc-messages');
-          if(!firstLoad && rows.length>lastCount) playBeep();
-          lastCount=rows.length; firstLoad=false;
-          var atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
-          box.innerHTML='';
-          var myName=nameEl.value.trim();
-          rows.forEach(function(m){
-            var lvl=m.level||1,d=document.createElement('div');
-            d.className='pc-msg pc-lvl'+lvl;
-            var pic=m.avatar_url?'<img class="pc-pic" src="'+m.avatar_url+'" onclick="pcZoom(\''+m.avatar_url+'\')">':'';
-            var canDel=(myLevel===4)||(myPass&&m.name===myName);
-            var isBanned=bannedList.indexOf(m.name)!==-1;
-            var tools='';
-            if(canDel||myLevel===4||myPass){
-              tools='<div class="pc-tools"><span class="pc-dots" onclick="pcToggleTray('+m.id+',event)"><i class="fa fa-ellipsis-v"></i></span><div class="pc-tray" id="tray'+m.id+'">';
-              if(myLevel===4){
-                if(isBanned) tools+='<button onclick="pcUnban(\''+esc(m.name)+'\')">unban user</button>';
-                else tools+='<button onclick="pcBan(\''+esc(m.name)+'\')">ban user</button>';
+    sb.from('filters').select('word').then(function(fres){
+      filterList=(fres.data||[]).map(function(x){return x.word;});
+      sb.from('settings').select('*').eq('key','paused').then(function(sres){
+        var srows=sres.data||[];
+        chatPaused = srows.length && srows[0].value==='true';
+        updateAdminUI();
+        var ph=document.getElementById('pc-text');
+        if(ph) ph.placeholder = (chatPaused && myLevel<4) ? 'chat is paused' : 'message';
+        sb.from('bans').select('name').then(function(bres){
+          bannedList=(bres.data||[]).map(function(x){return x.name;});
+          var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
+          sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:true}).then(function(r){
+            var rows=r.data||[],box=document.getElementById('pc-messages');
+            if(!firstLoad && rows.length>lastCount) playBeep();
+            lastCount=rows.length; firstLoad=false;
+            var atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
+            box.innerHTML='';
+            var myName=nameEl.value.trim();
+            rows.forEach(function(m){
+              var lvl=m.level||1,d=document.createElement('div');
+              d.className='pc-msg pc-lvl'+lvl;
+              var pic=m.avatar_url?'<img class="pc-pic" src="'+m.avatar_url+'" onclick="pcZoom(\''+m.avatar_url+'\')">':'';
+              var canDel=(myLevel===4)||(myPass&&m.name===myName);
+              var isBanned=bannedList.indexOf(m.name)!==-1;
+              var tools='';
+              if(canDel||myLevel===4||myPass){
+                tools='<div class="pc-tools"><span class="pc-dots" onclick="pcToggleTray('+m.id+',event)"><i class="fa fa-ellipsis-v"></i></span><div class="pc-tray" id="tray'+m.id+'">';
+                if(myLevel===4){
+                  if(isBanned) tools+='<button onclick="pcUnban(\''+esc(m.name)+'\')">unban user</button>';
+                  else tools+='<button onclick="pcBan(\''+esc(m.name)+'\')">ban user</button>';
+                }
+                if(canDel) tools+='<button onclick="pcDel('+m.id+')">delete</button>';
+                tools+='<button onclick="pcSoon()">private message</button>';
+                tools+='</div></div>';
               }
-              if(canDel) tools+='<button onclick="pcDel('+m.id+')">delete</button>';
-              tools+='<button onclick="pcSoon()">private message</button>';
-              tools+='</div></div>';
-            }
-            var nameHtml = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
-            var body='';
-            if(m.text)body+=esc(m.text);
-            if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
-            d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme">'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
-            box.appendChild(d);
+              var nameHtml = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
+              var body='';
+              if(m.text)body+=esc(censor(m.text));
+              if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
+              d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme">'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
+              box.appendChild(d);
+            });
+            if(atBottom)box.scrollTop=box.scrollHeight;
           });
-          if(atBottom)box.scrollTop=box.scrollHeight;
         });
       });
     });
