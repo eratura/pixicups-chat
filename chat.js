@@ -62,6 +62,13 @@
 
   window.pcSoon=function(){ say('private messages coming soon'); };
 
+  window.pcScrollDown=function(){
+    var box=document.getElementById('pc-messages');
+    box.scrollTop=box.scrollHeight;
+    var b=document.getElementById('pc-newmsg');
+    if(b) b.classList.remove('show');
+  };
+
   window.pcMention=function(name){
     var el=document.getElementById('pc-text');
     var cur=el.value;
@@ -337,6 +344,13 @@
     typingTimer=setTimeout(clearTyping,4000);
   });
 
+  document.getElementById('pc-messages').addEventListener('scroll',function(){
+    if(this.scrollHeight-this.scrollTop-this.clientHeight<40){
+      var b=document.getElementById('pc-newmsg');
+      if(b) b.classList.remove('show');
+    }
+  });
+
   window.pcToggleTray=function(id,ev){
     ev.stopPropagation();
     var all=document.querySelectorAll('.pc-tray');
@@ -533,10 +547,15 @@
               d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme"'+colorStyle+'>'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
               box.appendChild(d);
             });
+
+            var newBtn=document.getElementById('pc-newmsg');
             if(atBottom){
               box.scrollTop=box.scrollHeight;
               setTimeout(function(){ box.scrollTop=box.scrollHeight; },150);
               setTimeout(function(){ box.scrollTop=box.scrollHeight; },600);
+              if(newBtn) newBtn.classList.remove('show');
+            } else if(newMax>lastMaxId && newBtn){
+              newBtn.classList.add('show');
             }
             lastMaxId=newMax;
           });
