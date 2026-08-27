@@ -5,10 +5,10 @@
   );
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null, myColor=null;
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
-  var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[], pinnedMsg='';
+  var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[];
+  var pinnedId=null, pinnedRow=null;
   var soundOn=false, lastCount=0, firstLoad=true;
   var lastMaxId=0;
-  var PALETTE=[];
   var BEEP_URL = "https://eratura.github.io/pixicups-chat/750607__deadrobotmusic__notification-sound-1.wav";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
 
@@ -61,6 +61,17 @@
 
   window.pcSoon=function(){ say('private messages coming soon'); };
 
+  window.pcPin=function(id){
+    sb.from('settings').update({value:String(id)}).eq('key','pinned').then(function(){
+      pinnedId=id; say('pinned'); load();
+    });
+  };
+  window.pcUnpin=function(){
+    sb.from('settings').update({value:''}).eq('key','pinned').then(function(){
+      pinnedId=null; say('unpinned'); load();
+    });
+  };
+
   window.pcBuildColors=function(){
     var el=document.getElementById('pc-colorpick');
     if(!el) return;
@@ -88,11 +99,6 @@
     if(lb) lb.textContent = blockLinks ? 'on' : 'off';
     var sp=document.getElementById('pc-spambtn');
     if(sp) sp.textContent = antiSpam ? 'on' : 'off';
-    var pn=document.getElementById('pc-pinned');
-    if(pn){
-      pn.textContent=pinnedMsg;
-      pn.style.display = pinnedMsg ? 'block' : 'none';
-    }
   }
 
   function verifyName(n){
@@ -174,21 +180,6 @@
     sb.from('settings').update({value:v}).eq('key','antispam').then(function(){
       antiSpam=!antiSpam; updateAdminUI();
       say(antiSpam?'spam protection on':'spam protection off');
-    });
-  };
-
-  window.pcOpenPin=function(){
-    document.getElementById('pc-pininput').value=pinnedMsg||'';
-    document.getElementById('pc-pin').classList.add('show');
-  };
-
-  window.pcSavePin=function(){
-    var v=document.getElementById('pc-pininput').value.trim();
-    sb.from('settings').update({value:v}).eq('key','pinned').then(function(){
-      pinnedMsg=v;
-      updateAdminUI();
-      document.getElementById('pc-pin').classList.remove('show');
-      say(v?'pinned':'pin removed');
     });
   };
 
@@ -427,7 +418,7 @@
           if(s.key==='regonly') regOnly = s.value==='true';
           if(s.key==='blocklinks') blockLinks = s.value==='true';
           if(s.key==='antispam') antiSpam = s.value==='true';
-          if(s.key==='pinned') pinnedMsg = s.value||'';
+          if(s.key==='pinned') pinnedId = s.value ? parseInt(s.value) : null;
         });
         updateAdminUI();
         var ph=document.getElementById('pc-text');
@@ -449,6 +440,25 @@
             lastCount=rows.length; firstLoad=false;
             var atBottom=wasFirst||(box.scrollHeight-box.scrollTop-box.clientHeight<40);
             box.innerHTML='';
+
+            var pinBox=document.getElementById('pc-pinned');
+            pinnedRow=null;
+            if(pinnedId){
+              for(var pi=0;pi<rows.length;pi++){ if(rows[pi].id===pinnedId){ pinnedRow=rows[pi]; break; } }
+            }
+            if(pinnedRow){
+              var pm=pinnedRow;
+              var ppic=pm.avatar_url?'<img class="pc-pic" src="'+pm.avatar_url+'">':'';
+              var pcolor=pm.name_color?' style="color:'+pm.name_color+'"':'';
+              var pbody='';
+              if(pm.text)pbody+=esc(censor(pm.text));
+              if(pm.image_url)pbody+='<img src="'+pm.image_url+'" onclick="pcZoom(\''+pm.image_url+'\')">';
+              pinBox.innerHTML='<span class="pc-pinlabel">♡ pinned ♡</span><div class="pc-msg pc-lvl'+(pm.level||1)+'">'+ppic+'<div class="pc-nme"'+pcolor+'>'+esc(pm.name)+'</div><div class="pc-body">'+pbody+'</div></div>';
+              pinBox.style.display='block';
+            } else {
+              pinBox.style.display='none';
+            }
+
             var myName=nameEl.value.trim();
             rows.forEach(function(m){
               var lvl=m.level||1,d=document.createElement('div');
@@ -461,6 +471,8 @@
               if(canDel||myLevel===4||myPass){
                 tools='<div class="pc-tools"><span class="pc-dots" onclick="pcToggleTray('+m.id+',event)"><i class="fa fa-ellipsis-v"></i></span><div class="pc-tray" id="tray'+m.id+'">';
                 if(myLevel===4){
+                  if(pinnedId===m.id) tools+='<button onclick="pcUnpin()">unpin</button>';
+                  else tools+='<button onclick="pcPin('+m.id+')">pin message</button>';
                   if(isBanned) tools+='<button onclick="pcUnban(\''+esc(m.name)+'\')">unban user</button>';
                   else tools+='<button onclick="pcBan(\''+esc(m.name)+'\',\''+(m.fingerprint||'')+'\')">ban user</button>';
                 }
