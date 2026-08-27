@@ -7,6 +7,7 @@
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
   var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[], pinnedMsg='';
   var soundOn=false, lastCount=0, firstLoad=true;
+  var lastMaxId=0;
   var BEEP_URL = "https://eratura.github.io/pixicups-chat/750607__deadrobotmusic__notification-sound-1.wav";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
 
@@ -422,12 +423,14 @@
             var rows=r.data||[],box=document.getElementById('pc-messages');
             if(!firstLoad && rows.length>lastCount) playBeep();
             lastCount=rows.length; firstLoad=false;
+            var newMax=rows.length?rows[rows.length-1].id:0;
             var atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
             box.innerHTML='';
             var myName=nameEl.value.trim();
             rows.forEach(function(m){
               var lvl=m.level||1,d=document.createElement('div');
               d.className='pc-msg pc-lvl'+lvl;
+              if(!firstLoad && m.id>lastMaxId) d.className+=' pc-new';
               var pic=m.avatar_url?'<img class="pc-pic" src="'+m.avatar_url+'" onclick="pcZoom(\''+m.avatar_url+'\')">':'';
               var canDel=(myLevel===4)||(myPass&&m.name===myName);
               var isBanned=bannedList.indexOf(m.name)!==-1;
@@ -450,6 +453,7 @@
               box.appendChild(d);
             });
             if(atBottom)box.scrollTop=box.scrollHeight;
+            lastMaxId=newMax;
           });
         });
       });
