@@ -4,10 +4,17 @@
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocmpuYWFob2ZhcW5nZ2JkZ2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzQxMjQsImV4cCI6MjEwMzM1MDEyNH0.Z4A-IDO8XtJCNEGyeCdBPtGi0jC3FyrTi__1J3rpZ1I"
   );
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null;
-  var bannedList=[], chatPaused=false, filterList=[], lastSent=0;
+  var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
+  var filterList=[], lastSent=0;
   var soundOn=false, lastCount=0, firstLoad=true;
   var BEEP_URL = "";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
+
+  var myPrint=localStorage.getItem('pc_fp');
+  if(!myPrint){
+    myPrint='fp_'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+    localStorage.setItem('pc_fp',myPrint);
+  }
 
   var saved=localStorage.getItem('pc_me');
   if(saved){try{var s=JSON.parse(saved);nameEl.value=s.name||'';myPass=s.pass||null;if(s.name)verifyName(s.name);}catch(e){}}
@@ -53,6 +60,8 @@
     if(b) b.style.display = (myLevel===4) ? 'block' : 'none';
     var p=document.getElementById('pc-pausebtn');
     if(p) p.textContent = chatPaused ? 'unpause chat' : 'pause chat';
+    var g=document.getElementById('pc-regbtn');
+    if(g) g.textContent = regOnly ? 'allow guests' : 'members only';
   }
 
   function verifyName(n){
@@ -108,6 +117,15 @@
       chatPaused = !chatPaused;
       updateAdminUI();
       say(chatPaused ? 'chat paused' : 'chat unpaused');
+    });
+  };
+
+  window.pcToggleRegOnly=function(){
+    var newVal = regOnly ? 'false' : 'true';
+    sb.from('settings').update({value:newVal}).eq('key','regonly').then(function(){
+      regOnly = !regOnly;
+      updateAdminUI();
+      say(regOnly ? 'members only' : 'guests allowed');
     });
   };
 
@@ -233,9 +251,9 @@
     for(var i=0;i<all.length;i++) all[i].classList.remove('open');
   });
 
-  window.pcBan=function(name){
+  window.pcBan=function(name,print){
     ask('Ban '+name+'?',function(){
-      sb.from('bans').insert({name:name}).then(function(){say(name+' banned');load();});
+      sb.from('bans').insert({name:name,fingerprint:print||null}).then(function(){say(name+' banned');load();});
     });
   };
   window.pcUnban=function(name){
@@ -262,14 +280,23 @@
   function load(){
     sb.from('filters').select('word').then(function(fres){
       filterList=(fres.data||[]).map(function(x){return x.word;});
-      sb.from('settings').select('*').eq('key','paused').then(function(sres){
+      sb.from('settings').select('*').then(function(sres){
         var srows=sres.data||[];
-        chatPaused = srows.length && srows[0].value==='true';
+        srows.forEach(function(s){
+          if(s.key==='paused') chatPaused = s.value==='true';
+          if(s.key==='regonly') regOnly = s.value==='true';
+        });
         updateAdminUI();
         var ph=document.getElementById('pc-text');
-        if(ph) ph.placeholder = (chatPaused && myLevel<4) ? 'chat is paused' : 'message';
-        sb.from('bans').select('name').then(function(bres){
-          bannedList=(bres.data||[]).map(function(x){return x.name;});
+        if(ph){
+          if(chatPaused && myLevel<4) ph.placeholder='chat is paused';
+          else if(regOnly && myLevel<2) ph.placeholder='members only — log in';
+          else ph.placeholder='message';
+        }
+        sb.from('bans').select('*').then(function(bres){
+          var brows=bres.data||[];
+          bannedList=brows.map(function(x){return x.name;});
+          bannedPrints=brows.filter(function(x){return x.fingerprint;}).map(function(x){return x.fingerprint;});
           var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
           sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:true}).then(function(r){
             var rows=r.data||[],box=document.getElementById('pc-messages');
@@ -289,7 +316,7 @@
                 tools='<div class="pc-tools"><span class="pc-dots" onclick="pcToggleTray('+m.id+',event)"><i class="fa fa-ellipsis-v"></i></span><div class="pc-tray" id="tray'+m.id+'">';
                 if(myLevel===4){
                   if(isBanned) tools+='<button onclick="pcUnban(\''+esc(m.name)+'\')">unban user</button>';
-                  else tools+='<button onclick="pcBan(\''+esc(m.name)+'\')">ban user</button>';
+                  else tools+='<button onclick="pcBan(\''+esc(m.name)+'\',\''+(m.fingerprint||'')+'\')">ban user</button>';
                 }
                 if(canDel) tools+='<button onclick="pcDel('+m.id+')">delete</button>';
                 tools+='<button onclick="pcSoon()">private message</button>';
@@ -322,6 +349,8 @@
     var f=document.getElementById('pc-imgfile').files[0];
     if(!t&&!f)return;
     if(chatPaused && myLevel<4){say('chat is paused');return;}
+    if(regOnly && myLevel<2){say('members only — log in to post');return;}
+    if(bannedPrints.indexOf(myPrint)!==-1){say('you are banned');return;}
     if(myLevel<4){
       var since=Date.now()-lastSent;
       if(since<4000){
@@ -329,8 +358,11 @@
         return;
       }
     }
-    sb.from('bans').select('name').eq('name',n).then(function(b){
-      if((b.data||[]).length){say('you are banned');return;}
+    sb.from('bans').select('*').then(function(b){
+      var brows=b.data||[];
+      var nameHit=brows.some(function(x){return x.name===n;});
+      var printHit=brows.some(function(x){return x.fingerprint && x.fingerprint===myPrint;});
+      if(nameHit||printHit){say('you are banned');return;}
       sb.from('users').select('*').eq('name',n).then(function(r){
         var rows=r.data||[];
         if(rows.length && rows[0].password && rows[0].password!==myPass){
@@ -353,7 +385,7 @@
 
   function ins(n,t,img){
     lastSent=Date.now();
-    sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,text:t||null,image_url:img}).then(function(){
+    sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
       document.getElementById('pc-text').value='';
       document.getElementById('pc-imgfile').value='';
       load();
