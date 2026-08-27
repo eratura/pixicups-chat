@@ -1,3 +1,6 @@
+@import url('https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css');
+
 #pc-toggle { display: none; }
 #pc-float { position: fixed; bottom: 18px; right: 18px; z-index: 99999; text-align: right; font-family: 'Pixelify Sans', cursive; }
 #pc-panel {
