@@ -430,7 +430,10 @@
             if(!firstLoad && rows.length>lastCount) playBeep();
             lastCount=rows.length; firstLoad=false;
             var newMax=rows.length?rows[rows.length-1].id:0;
-            var atBottom=box.scrollHeight-box.scrollTop-box.clientHeight<40;
+            var wasFirst=firstLoad;
+            if(!firstLoad && rows.length>lastCount) playBeep();
+            lastCount=rows.length; firstLoad=false;
+            var atBottom=wasFirst||(box.scrollHeight-box.scrollTop-box.clientHeight<40);
             box.innerHTML='';
             var myName=nameEl.value.trim();
             rows.forEach(function(m){
