@@ -7,7 +7,7 @@
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
   var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[], pinnedMsg='';
   var soundOn=false, lastCount=0, firstLoad=true;
-  var BEEP_URL = "";
+  var BEEP_URL = "https://eratura.github.io/pixicups-chat/750607__deadrobotmusic__notification-sound-1.wav";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
 
   var myPrint=localStorage.getItem('pc_fp');
