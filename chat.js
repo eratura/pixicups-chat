@@ -16,14 +16,20 @@
 
   function say(m){statusEl.textContent=m;setTimeout(function(){if(statusEl.textContent===m)statusEl.textContent='';},3000);}
 
+  function updateAdminUI(){
+    var b=document.getElementById('pc-clearbtn');
+    if(b) b.style.display = (myLevel===4) ? 'inline-block' : 'none';
+  }
+
   function verifyName(n){
     sb.from('users').select('*').eq('name',n).then(function(r){
       var rows=r.data||[];
-      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;return;}
+      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;updateAdminUI();return;}
       var u=rows[0];
       if(u.password&&u.password===myPass){myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;}
       else if(u.password){myLevel=1;myAvatar=null;myProfUrl=null;}
       else {myLevel=2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;}
+      updateAdminUI();
     });
   }
 
@@ -40,6 +46,7 @@
     localStorage.removeItem('pc_me');
     nameEl.value='';
     pcCloseProfile();
+    updateAdminUI();
     say('logged out');
     load();
   };
@@ -49,6 +56,16 @@
     var url=document.getElementById('pc-profurl').value.trim()||null;
     sb.from('users').update({profile_url:url}).eq('name',n).then(function(){
       myProfUrl=url; say('profile saved'); pcCloseProfile();
+    });
+  };
+
+  window.pcClearAll=function(){
+    if(!confirm('Delete ALL messages? This cannot be undone.'))return;
+    if(!confirm('Really sure? Everything will be gone.'))return;
+    sb.from('messages').delete().neq('id',0).then(function(){
+      say('chat cleared');
+      pcCloseProfile();
+      load();
     });
   };
 
@@ -69,7 +86,7 @@
     if(!p){msg.textContent='enter a password';return;}
     sb.from('users').select('*').eq('name',n).then(function(r){
       var rows=r.data||[];
-      function done(){document.getElementById('pc-pw').classList.remove('show');}
+      function done(){document.getElementById('pc-pw').classList.remove('show');updateAdminUI();}
       if(!rows.length){
         sb.from('users').insert({name:n,password:p,level:2}).then(function(){
           myPass=p;myLevel=2;
@@ -248,5 +265,6 @@
   }
 
   document.getElementById('pc-text').addEventListener('keydown',function(e){if(e.key==='Enter')pcSend();});
+  updateAdminUI();
   load();setInterval(load,3000);
 })();
