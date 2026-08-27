@@ -109,6 +109,17 @@ align-items: center; justify-content: center; padding: 20px; box-sizing: border-
 #pc-typing { font-size: 10px; color: #e79fc4; padding: 0 10px; min-height: 12px; font-style: italic; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
 .pc-mention { font-weight: bold; color: #e79fc4; }
 
+#pc-newmsg {
+  display: none; position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 90px; z-index: 15;
+  background: #FFF2FB; color: #b5849c;
+  border: 1px solid #f3cddd; border-radius: 999px;
+  padding: 5px 14px; font-size: 11px; cursor: pointer;
+  font-family: 'Pixelify Sans', cursive;
+  box-shadow: 0 2px 8px rgba(200,150,175,.3);
+}
+#pc-newmsg.show { display: block; }
+
 .pc-tab { display: inline-block; margin-top: 8px; background: #1a1a1a; color: #e79fc4; border: 2px solid #f3cddd; border-radius: 999px; padding: 7px 14px; font-size: 12px; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4); user-select: none; font-family: 'Pixelify Sans', cursive; }
 
 @media (max-width: 600px) {
