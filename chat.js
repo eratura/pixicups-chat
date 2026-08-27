@@ -8,7 +8,7 @@
   var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[], pinnedMsg='';
   var soundOn=false, lastCount=0, firstLoad=true;
   var lastMaxId=0;
-  var PALETTE=['#e79fc4','#c98fae','#b56b8f','#d4849c','#9b7bb8','#7b9bc4','#6bab9c','#c4a86b','#b58b6b','#8a8a8a'];
+  var PALETTE=[];
   var BEEP_URL = "https://eratura.github.io/pixicups-chat/750607__deadrobotmusic__notification-sound-1.wav";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
 
@@ -62,21 +62,17 @@
   window.pcSoon=function(){ say('private messages coming soon'); };
 
   window.pcBuildColors=function(){
-    var box=document.getElementById('pc-colors');
-    if(!box) return;
-    box.innerHTML='';
-    PALETTE.forEach(function(c){
-      var sw=document.createElement('div');
-      sw.style.cssText='width:22px;height:22px;border-radius:50%;cursor:pointer;background:'+c+';border:2px solid '+(myColor===c?'#333':'transparent');
-      sw.addEventListener('click',function(){
-        var n=nameEl.value.trim();
-        if(!n||!myPass){say('log in first');return;}
-        sb.from('users').update({name_color:c}).eq('name',n).then(function(){
-          myColor=c; pcBuildColors(); say('color saved');
-        });
+    var el=document.getElementById('pc-colorpick');
+    if(!el) return;
+    el.value = myColor || '#e79fc4';
+    el.onchange=function(){
+      var n=nameEl.value.trim();
+      if(!n||!myPass){say('log in first');return;}
+      var c=el.value;
+      sb.from('users').update({name_color:c}).eq('name',n).then(function(){
+        myColor=c; say('color saved');
       });
-      box.appendChild(sw);
-    });
+    };
   };
 
   function updateAdminUI(){
