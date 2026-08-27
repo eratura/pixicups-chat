@@ -4,7 +4,7 @@
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocmpuYWFob2ZhcW5nZ2JkZ2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzQxMjQsImV4cCI6MjEwMzM1MDEyNH0.Z4A-IDO8XtJCNEGyeCdBPtGi0jC3FyrTi__1J3rpZ1I"
   );
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null;
-  var bannedList=[], chatPaused=false, filterList=[];
+  var bannedList=[], chatPaused=false, filterList=[], lastSent=0;
   var soundOn=false, lastCount=0, firstLoad=true;
   var BEEP_URL = "";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
@@ -108,6 +108,36 @@
       chatPaused = !chatPaused;
       updateAdminUI();
       say(chatPaused ? 'chat paused' : 'chat unpaused');
+    });
+  };
+
+  window.pcOpenBanList=function(){
+    var body=document.getElementById('pc-banlistbody');
+    body.innerHTML='loading...';
+    document.getElementById('pc-banlist').classList.add('show');
+    sb.from('bans').select('*').order('created_at',{ascending:false}).then(function(r){
+      var rows=r.data||[];
+      if(!rows.length){ body.innerHTML='<div style="color:#999;padding:8px">nobody is banned</div>'; return; }
+      body.innerHTML='';
+      rows.forEach(function(b){
+        var row=document.createElement('div');
+        row.style.cssText='display:flex;justify-content:space-between;align-items:center;padding:5px 4px;border-bottom:1px solid #f7e3ee';
+        var nm=document.createElement('span');
+        nm.textContent=b.name;
+        var btn=document.createElement('button');
+        btn.className='pc-pbtn';
+        btn.style.cssText='padding:3px 9px;font-size:11px';
+        btn.textContent='unban';
+        btn.addEventListener('click',function(){
+          sb.from('bans').delete().eq('name',b.name).then(function(){
+            say(b.name+' unbanned');
+            pcOpenBanList();
+            load();
+          });
+        });
+        row.appendChild(nm); row.appendChild(btn);
+        body.appendChild(row);
+      });
     });
   };
 
@@ -292,6 +322,13 @@
     var f=document.getElementById('pc-imgfile').files[0];
     if(!t&&!f)return;
     if(chatPaused && myLevel<4){say('chat is paused');return;}
+    if(myLevel<4){
+      var since=Date.now()-lastSent;
+      if(since<4000){
+        say('slow down — wait '+Math.ceil((4000-since)/1000)+'s');
+        return;
+      }
+    }
     sb.from('bans').select('name').eq('name',n).then(function(b){
       if((b.data||[]).length){say('you are banned');return;}
       sb.from('users').select('*').eq('name',n).then(function(r){
@@ -315,6 +352,7 @@
   };
 
   function ins(n,t,img){
+    lastSent=Date.now();
     sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,text:t||null,image_url:img}).then(function(){
       document.getElementById('pc-text').value='';
       document.getElementById('pc-imgfile').value='';
