@@ -459,7 +459,11 @@
               d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme">'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
               box.appendChild(d);
             });
-            if(atBottom)box.scrollTop=box.scrollHeight;
+            if(atBottom){
+              box.scrollTop=box.scrollHeight;
+              setTimeout(function(){ box.scrollTop=box.scrollHeight; },150);
+              setTimeout(function(){ box.scrollTop=box.scrollHeight; },600);
+            }
             lastMaxId=newMax;
           });
         });
