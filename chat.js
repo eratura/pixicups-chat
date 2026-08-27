@@ -258,7 +258,9 @@
     b.innerHTML = soundOn ? '<i class="fa fa-volume-up"></i>' : '<i class="fa fa-volume-off"></i>';
   }
   function playBeep(){
-    if(!soundOn||!BEEP_URL)return;
+    if(!soundOn) return;
+    if(!BEEP_URL) return;
+    if(!document.hidden) return;
     try{ new Audio(BEEP_URL).play(); }catch(e){}
   }
 
