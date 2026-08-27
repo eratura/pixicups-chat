@@ -54,6 +54,10 @@
     box.classList.add('show');
   }
 
+    window.pcPopOut=function(){
+    window.open('https://eratura.github.io/pixicups-chat/chat.html','pcchat','width=520,height=720');
+  };
+
   window.pcSoon=function(){ say('private messages coming soon'); };
 
   function updateAdminUI(){
