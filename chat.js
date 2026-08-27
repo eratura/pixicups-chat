@@ -5,7 +5,7 @@
   );
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null;
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
-  var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[];
+  var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[], pinnedMsg='';
   var soundOn=false, lastCount=0, firstLoad=true;
   var BEEP_URL = "";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
@@ -68,6 +68,11 @@
     if(lb) lb.textContent = blockLinks ? 'on' : 'off';
     var sp=document.getElementById('pc-spambtn');
     if(sp) sp.textContent = antiSpam ? 'on' : 'off';
+    var pn=document.getElementById('pc-pinned');
+    if(pn){
+      pn.textContent=pinnedMsg;
+      pn.style.display = pinnedMsg ? 'block' : 'none';
+    }
   }
 
   function verifyName(n){
@@ -148,6 +153,21 @@
     sb.from('settings').update({value:v}).eq('key','antispam').then(function(){
       antiSpam=!antiSpam; updateAdminUI();
       say(antiSpam?'spam protection on':'spam protection off');
+    });
+  };
+
+  window.pcOpenPin=function(){
+    document.getElementById('pc-pininput').value=pinnedMsg||'';
+    document.getElementById('pc-pin').classList.add('show');
+  };
+
+  window.pcSavePin=function(){
+    var v=document.getElementById('pc-pininput').value.trim();
+    sb.from('settings').update({value:v}).eq('key','pinned').then(function(){
+      pinnedMsg=v;
+      updateAdminUI();
+      document.getElementById('pc-pin').classList.remove('show');
+      say(v?'pinned':'pin removed');
     });
   };
 
@@ -316,18 +336,6 @@
     reader.readAsDataURL(f);
   });
 
-    document.getElementById('pc-imgfile').addEventListener('change',function(){
-    var f=this.files[0];
-    var box=document.getElementById('pc-imgpreview');
-    if(!f){ box.style.display='none'; return; }
-    var reader=new FileReader();
-    reader.onload=function(e){
-      document.getElementById('pc-imgthumb').src=e.target.result;
-      box.style.display='flex';
-    };
-    reader.readAsDataURL(f);
-  });
-
   window.pcPurgeUser=function(name){
     ask('Delete all messages from '+name+'?',function(){
       sb.from('messages').delete().eq('name',name).then(function(){
@@ -396,6 +404,7 @@
           if(s.key==='regonly') regOnly = s.value==='true';
           if(s.key==='blocklinks') blockLinks = s.value==='true';
           if(s.key==='antispam') antiSpam = s.value==='true';
+          if(s.key==='pinned') pinnedMsg = s.value||'';
         });
         updateAdminUI();
         var ph=document.getElementById('pc-text');
