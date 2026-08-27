@@ -62,6 +62,8 @@
     if(p) p.textContent = chatPaused ? 'unpause chat' : 'pause chat';
     var g=document.getElementById('pc-regbtn');
     if(g) g.textContent = regOnly ? 'allow guests' : 'members only';
+    var bn=document.getElementById('pc-banner');
+    if(bn) bn.style.display = regOnly ? 'block' : 'none';
   }
 
   function verifyName(n){
