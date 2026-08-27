@@ -279,6 +279,23 @@
     z.classList.add('show');
   };
 
+  window.pcClearImg=function(){
+    document.getElementById('pc-imgfile').value='';
+    document.getElementById('pc-imgpreview').style.display='none';
+  };
+
+  document.getElementById('pc-imgfile').addEventListener('change',function(){
+    var f=this.files[0];
+    var box=document.getElementById('pc-imgpreview');
+    if(!f){ box.style.display='none'; return; }
+    var reader=new FileReader();
+    reader.onload=function(e){
+      document.getElementById('pc-imgthumb').src=e.target.result;
+      box.style.display='flex';
+    };
+    reader.readAsDataURL(f);
+  });
+
   function load(){
     sb.from('filters').select('word').then(function(fres){
       filterList=(fres.data||[]).map(function(x){return x.word;});
@@ -390,6 +407,7 @@
     sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
       document.getElementById('pc-text').value='';
       document.getElementById('pc-imgfile').value='';
+      document.getElementById('pc-imgpreview').style.display='none';
       load();
     });
   }
