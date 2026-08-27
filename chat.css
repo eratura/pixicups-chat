@@ -108,11 +108,13 @@ align-items: center; justify-content: center; padding: 20px; box-sizing: border-
 #pc-newmsg {
   display: none; position: absolute; left: 50%; transform: translateX(-50%);
   bottom: 90px; z-index: 15;
-  background: #FFF2FB; color: #b5849c;
+  background: rgba(255,242,251,.85); color: #b5849c;
   border: 1px solid #f3cddd; border-radius: 999px;
   padding: 5px 14px; font-size: 11px; cursor: pointer;
-  font-family: 'Pixelify Sans', cursive;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  text-align: center;
   box-shadow: 0 2px 8px rgba(200,150,175,.3);
+  backdrop-filter: blur(2px);
 }
 #pc-newmsg.show { display: block; }
 
