@@ -84,6 +84,19 @@ color: #ccc;
 #pc-pwmsg { font-size: 11px; color: #e58b8f; min-height: 14px; }
 #pc-pwtitle { font-size: 13px; color: #ccc; }
 
+#pc-pinned {
+  margin: 8px 10px 0; padding: 6px 8px;
+  background: #141414; border: 1px solid #f3cddd;
+  border-radius: 8px 8px 0 0;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 13px; color: #e8e8e8;
+}
+#pc-pinned .pc-pinlabel {
+  font-size: 10px; color: #e79fc4; font-family: 'Pixelify Sans', cursive;
+  display: block; margin-bottom: 3px;
+}
+#pc-pinned .pc-msg { margin: 0; }
+
 #pc-zoom {
 display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
 background: rgba(0,0,0,.92); z-index: 30; cursor: zoom-out;
