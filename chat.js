@@ -7,6 +7,7 @@
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
   var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[];
   var pinnedId=null, pinnedRow=null;
+  var typingTimer=null, lastTypingPing=0;
   var soundOn=false, lastCount=0, firstLoad=true;
   var lastMaxId=0;
   var BEEP_URL = "https://eratura.github.io/pixicups-chat/750607__deadrobotmusic__notification-sound-1.wav";
@@ -60,6 +61,42 @@
   };
 
   window.pcSoon=function(){ say('private messages coming soon'); };
+
+  window.pcMention=function(name){
+    var el=document.getElementById('pc-text');
+    var cur=el.value;
+    el.value = (cur ? cur.replace(/\s*$/,'') + ' ' : '') + '@' + name + ' ';
+    el.focus();
+  };
+
+  function pingTyping(){
+    var n=nameEl.value.trim();
+    if(!n) return;
+    var now=Date.now();
+    if(now-lastTypingPing < 2000) return;
+    lastTypingPing=now;
+    sb.from('typing').upsert({name:n,updated_at:new Date().toISOString()}).then(function(){});
+  }
+
+  function clearTyping(){
+    var n=nameEl.value.trim();
+    if(!n) return;
+    sb.from('typing').delete().eq('name',n).then(function(){});
+  }
+
+  function showTyping(){
+    var n=nameEl.value.trim();
+    var cutoff=new Date(Date.now()-6000).toISOString();
+    sb.from('typing').select('*').gte('updated_at',cutoff).then(function(r){
+      var rows=(r.data||[]).filter(function(x){return x.name!==n;});
+      var el=document.getElementById('pc-typing');
+      if(!el) return;
+      if(!rows.length){ el.textContent=''; return; }
+      if(rows.length===1) el.textContent=rows[0].name+' is typing...';
+      else if(rows.length===2) el.textContent=rows[0].name+' and '+rows[1].name+' are typing...';
+      else el.textContent='several people are typing...';
+    });
+  }
 
   window.pcPin=function(id){
     sb.from('settings').update({value:String(id)}).eq('key','pinned').then(function(){
@@ -294,6 +331,12 @@
   nameEl.addEventListener('blur',function(){var n=nameEl.value.trim();if(n)verifyName(n);});
   document.getElementById('pc-pwinput').addEventListener('keydown',function(e){if(e.key==='Enter')pcPwSubmit();});
 
+  document.getElementById('pc-text').addEventListener('input',function(){
+    if(this.value.trim()) pingTyping();
+    clearTimeout(typingTimer);
+    typingTimer=setTimeout(clearTyping,4000);
+  });
+
   window.pcToggleTray=function(id,ev){
     ev.stopPropagation();
     var all=document.querySelectorAll('.pc-tray');
@@ -421,6 +464,7 @@
           if(s.key==='pinned') pinnedId = s.value ? parseInt(s.value) : null;
         });
         updateAdminUI();
+        showTyping();
         var ph=document.getElementById('pc-text');
         if(ph){
           if(chatPaused && myLevel<4) ph.placeholder='chat is paused';
@@ -451,7 +495,7 @@
               var ppic=pm.avatar_url?'<img class="pc-pic" src="'+pm.avatar_url+'">':'';
               var pcolor=pm.name_color?' style="color:'+pm.name_color+'"':'';
               var pbody='';
-              if(pm.text)pbody+=esc(censor(pm.text));
+              if(pm.text)pbody+=esc(censor(pm.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
               if(pm.image_url)pbody+='<img src="'+pm.image_url+'" onclick="pcZoom(\''+pm.image_url+'\')">';
               pinBox.innerHTML='<span class="pc-pinlabel">♡ pinned ♡</span><div class="pc-msg pc-lvl'+(pm.level||1)+'">'+ppic+'<div class="pc-nme"'+pcolor+'>'+esc(pm.name)+'</div><div class="pc-body">'+pbody+'</div></div>';
               pinBox.style.display='block';
@@ -480,10 +524,11 @@
                 tools+='<button onclick="pcSoon()">private message</button>';
                 tools+='</div></div>';
               }
-              var nameHtml = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
+              var rawName = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
+              var nameHtml = '<span onclick="pcMention(\''+esc(m.name)+'\')" style="cursor:pointer">'+rawName+'</span>';
               var colorStyle = m.name_color ? ' style="color:'+m.name_color+'"' : '';
               var body='';
-              if(m.text)body+=esc(censor(m.text));
+              if(m.text)body+=esc(censor(m.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
               if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
               d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme"'+colorStyle+'>'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
               box.appendChild(d);
@@ -553,6 +598,7 @@
   };
 
   function ins(n,t,img){
+    clearTyping();
     sendTimes.push(Date.now());
     sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,name_color:myColor,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
       document.getElementById('pc-text').value='';
