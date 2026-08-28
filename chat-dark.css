@@ -34,6 +34,8 @@ margin: 8px 10px 0; border-radius: 8px 8px 0 0;
 .pc-lvl2 .pc-nme { color: #e0e0e0; }
 .pc-lvl4 .pc-nme { color: #FFD4FF; }
 .pc-lvl4 .pc-nme:after { content: '♥︎'; margin-left: 0.25em; font-weight: normal; }
+.pc-badge { height: 1.1em; vertical-align: -0.15em; margin-right: 3px; cursor: default; }
+.pc-mention { font-weight: bold; color: #ffffff; }
 .pc-body { display: inline; }
 .pc-body img { max-width: 100%; max-height: 10em; margin-top: 3px; display: block; cursor: zoom-in; }
 .pc-dtxt { color: #777; font-size: 80%; line-height: 1.5em; text-align: right; float: right; padding: 0 0.5em; min-width: 6em; }
@@ -66,23 +68,20 @@ font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 #pc-text { flex: 1; border: none; outline: none; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px; color: #e8e8e8; background: transparent; padding: 2px 0; }
 #pc-imgfile, #pc-avfile { display: none; }
 #pc-status { font-size: 10px; color: #e79fc4; padding: 0 10px; font-family: 'Pixelify Sans', cursive; }
+#pc-typing { font-size: 10px; color: #e79fc4; padding: 0 10px; min-height: 12px; font-style: italic; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
 
-.pc-overlay {
-display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-background: rgba(10,10,10,.97); z-index: 25;
-flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px;
-color: #ccc;
+#pc-newmsg {
+  display: none; position: absolute; left: 50%; transform: translateX(-50%);
+  bottom: 90px; z-index: 15;
+  background: rgba(26,26,26,.85); color: #e79fc4;
+  border: 1px solid #f3cddd; border-radius: 999px;
+  padding: 5px 14px; font-size: 11px; cursor: pointer;
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  backdrop-filter: blur(2px);
 }
-.pc-overlay.show { display: flex; }
-.pc-overlay input { width: 230px; padding: 6px 8px; border: 1px solid #444; font-size: 12px; background:#1a1a1a; color:#e8e8e8; }
-.pc-overlay div { color: #ccc; }
-#pc-avpreview { width: 90px; height: 90px; object-fit: cover; background: #2a2a2a; }
-.pc-overlay label { font-size: 12px; color: #aaa; }
-.pc-pbtn { background: #1a1a1a; color: #e79fc4; border: 1px solid #f3cddd; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: 'Pixelify Sans', cursive; }
-.pc-pbtn:hover { background: #2a2a2a; }
-#pc-pwmsg { font-size: 11px; color: #e58b8f; min-height: 14px; }
-#pc-pwtitle { font-size: 13px; color: #ccc; }
+#pc-newmsg.show { display: block; }
 
 #pc-pinned {
   margin: 8px 10px 0; padding: 6px 8px;
@@ -98,48 +97,21 @@ color: #ccc;
 #pc-pinned .pc-msg { margin: 0; }
 #pc-pinned .pc-body { color: #e79fc4; }
 
-#pc-zoom {
+.pc-overlay {
 display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-background: rgba(0,0,0,.92); z-index: 30; cursor: zoom-out;
-align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
+background: rgba(10,10,10,.97); z-index: 25;
+flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 13px;
+color: #ccc;
 }
-#pc-zoom.show { display: flex; }
-#pc-zoom img { max-width: 100%; max-height: 100%; }
-
-#pc-typing { font-size: 10px; color: #e79fc4; padding: 0 10px; min-height: 12px; font-style: italic; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; }
-.pc-mention { font-weight: bold; color: #ffffff; }
-
-#pc-newmsg {
-  display: none; position: absolute; left: 50%; transform: translateX(-50%);
-  bottom: 90px; z-index: 15;
-  background: rgba(26,26,26,.85); color: #e79fc4;
-  border: 1px solid #f3cddd; border-radius: 999px;
-  padding: 5px 14px; font-size: 11px; cursor: pointer;
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-  text-align: center;
-  box-shadow: 0 2px 8px rgba(0,0,0,.4);
-  backdrop-filter: blur(2px);
-}
-#pc-newmsg.show { display: block; }
-
-.pc-badge { height: 1.1em; vertical-align: -0.15em; margin-right: 3px; cursor: default; }
-
-#pc-badgebig { width: 64px; height: 64px; object-fit: contain; }
-#pc-badgetext { font-size: 12px; color: #e79fc4; text-align: center; max-width: 220px; line-height: 1.6; }
-
-#pc-cardpic { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; background: #f3f3f3; }
-#pc-cardname { font-size: 15px; font-weight: bold; }
-#pc-cardjoined { font-size: 11px; color: #aaa; }
-#pc-cardbot { font-size: 12px; text-align: center; }
-#pc-cardbot img { width: 42px; height: 42px; object-fit: cover; display: block; margin: 4px auto 2px; border-radius: 4px; }
-#pc-cardabout { font-size: 12px; max-width: 240px; text-align: center; line-height: 1.5; }
-#pc-botgrid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 280px; max-height: 260px; overflow-y: auto; }
-.pc-botitem { width: 60px; cursor: pointer; text-align: center; font-size: 9px; }
-.pc-botitem img { width: 48px; height: 48px; object-fit: cover; display: block; margin: 0 auto 2px; border-radius: 4px; }
-.pc-botitem.sel img { outline: 2px solid #e79fc4; outline-offset: 1px; }
-#pc-aboutinput { width: 230px; height: 60px; padding: 6px 8px; border: 1px solid #ddd; font-size: 12px; font-family: inherit; resize: none; }
-
-.pc-tab { display: inline-block; margin-top: 8px; background: #1a1a1a; color: #e79fc4; border: 2px solid #f3cddd; border-radius: 999px; padding: 7px 14px; font-size: 12px; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4); user-select: none; font-family: 'Pixelify Sans', cursive; }
+.pc-overlay.show { display: flex; }
+.pc-overlay input { width: 230px; padding: 6px 8px; border: 1px solid #444; font-size: 12px; background:#1a1a1a; color:#e8e8e8; }
+#pc-avpreview { width: 90px; height: 90px; object-fit: cover; background: #2a2a2a; }
+.pc-overlay label { font-size: 12px; color: #aaa; }
+.pc-pbtn { background: #1a1a1a; color: #e79fc4; border: 1px solid #f3cddd; padding: 6px 14px; font-size: 12px; cursor: pointer; font-family: 'Pixelify Sans', cursive; }
+.pc-pbtn:hover { background: #2a2a2a; }
+#pc-pwmsg { font-size: 11px; color: #e58b8f; min-height: 14px; }
+#pc-pwtitle { font-size: 13px; color: #ccc; }
 
 #pc-cardpic { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; background: #2a2a2a; }
 #pc-cardname { font-size: 15px; font-weight: bold; color: #e8e8e8; }
@@ -154,6 +126,16 @@ align-items: center; justify-content: center; padding: 20px; box-sizing: border-
 #pc-aboutinput { width: 230px; height: 60px; padding: 6px 8px; border: 1px solid #444; font-size: 12px; font-family: inherit; resize: none; background: #1a1a1a; color: #e8e8e8; }
 #pc-badgebig { width: 64px; height: 64px; object-fit: contain; }
 #pc-badgetext { font-size: 12px; color: #e79fc4; text-align: center; max-width: 220px; line-height: 1.6; }
+
+#pc-zoom {
+display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+background: rgba(0,0,0,.92); z-index: 30; cursor: zoom-out;
+align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;
+}
+#pc-zoom.show { display: flex; }
+#pc-zoom img { max-width: 100%; max-height: 100%; }
+
+.pc-tab { display: inline-block; margin-top: 8px; background: #1a1a1a; color: #e79fc4; border: 2px solid #f3cddd; border-radius: 999px; padding: 7px 14px; font-size: 12px; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4); user-select: none; font-family: 'Pixelify Sans', cursive; }
 
 @media (max-width: 600px) {
 #pc-float { bottom: 12px; right: 12px; left: auto; pointer-events: none; }
