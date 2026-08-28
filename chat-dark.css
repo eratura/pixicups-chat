@@ -124,6 +124,9 @@ align-items: center; justify-content: center; padding: 20px; box-sizing: border-
 
 .pc-badge { height: 1.1em; vertical-align: -0.15em; margin-right: 3px; cursor: default; }
 
+#pc-badgebig { width: 64px; height: 64px; object-fit: contain; }
+#pc-badgetext { font-size: 12px; color: #b5849c; text-align: center; max-width: 220px; }
+
 .pc-tab { display: inline-block; margin-top: 8px; background: #1a1a1a; color: #e79fc4; border: 2px solid #f3cddd; border-radius: 999px; padding: 7px 14px; font-size: 12px; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4); user-select: none; font-family: 'Pixelify Sans', cursive; }
 
 @media (max-width: 600px) {
