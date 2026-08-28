@@ -621,14 +621,19 @@
 
   function ins(n,t,img){
     sending=true;
+    setTimeout(function(){ sending=false; },8000);
     clearTyping();
     sendTimes.push(Date.now());
     document.getElementById('pc-text').value='';
-    sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,name_color:myColor,badge:myBadge,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
+    sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,name_color:myColor,badge:myBadge,text:t||null,image_url:img,fingerprint:myPrint}).then(function(res){
       sending=false;
+      if(res && res.error){ say('message failed — try again'); return; }
       document.getElementById('pc-imgfile').value='';
       document.getElementById('pc-imgpreview').style.display='none';
       load();
+    }).catch(function(){
+      sending=false;
+      say('message failed — try again');
     });
   }
 
