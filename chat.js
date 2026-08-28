@@ -3,7 +3,21 @@
     "https://vhrjnaahofaqnggbdgbj.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocmpuYWFob2ZhcW5nZ2JkZ2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzQxMjQsImV4cCI6MjEwMzM1MDEyNH0.Z4A-IDO8XtJCNEGyeCdBPtGi0jC3FyrTi__1J3rpZ1I"
   );
+
+  var BOTS=[
+    "alex-vogel","cody-weaver","corrupt-will","evan-callahan","gage-wilson",
+    "jake-mckinney","kai-halvorsen","kane-miller","keith-parker","kristian-lund",
+    "mitch-hartley","nico-rossi","ricky-carson","ronnie-chapman","rory-bennett",
+    "ryan-and-tyler","soren-vinter","spencer-price","sven-eriksson","tate-mercer",
+    "thomas-crane","vex-mohegan","will-grayson"
+  ];
+  var BOTBASE="https://eratura.github.io/pixicups-chat/";
+  function botLabel(slug){
+    return slug.split('-').map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ');
+  }
+
   var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null, myColor=null, myBadge=null;
+  var myFavBot=null, myAbout=null;
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
   var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[];
   var pinnedId=null, pinnedRow=null;
@@ -81,6 +95,82 @@
     el.focus();
   };
 
+  window.pcOpenCard=function(name){
+    sb.from('users').select('name,avatar_url,created_at,fav_bot,about,name_color,badge').eq('name',name).then(function(r){
+      var rows=r.data||[];
+      var card=document.getElementById('pc-card');
+      var u=rows[0];
+      document.getElementById('pc-cardpic').src = (u&&u.avatar_url)||'';
+      var nm=document.getElementById('pc-cardname');
+      nm.textContent=name;
+      nm.style.color=(u&&u.name_color)||'';
+      var j=document.getElementById('pc-cardjoined');
+      if(u&&u.created_at){
+        var d=new Date(u.created_at);
+        j.textContent='joined '+d.toLocaleDateString();
+      } else j.textContent='';
+      var bb=document.getElementById('pc-cardbot');
+      if(u&&u.fav_bot){
+        bb.innerHTML='<img src="'+BOTBASE+u.fav_bot+'.png"><span>'+esc(botLabel(u.fav_bot))+'</span>';
+      } else bb.innerHTML='';
+      document.getElementById('pc-cardabout').textContent=(u&&u.about)||'';
+      var mb=document.getElementById('pc-cardmention');
+      var fresh=mb.cloneNode(true);
+      mb.parentNode.replaceChild(fresh,mb);
+      fresh.addEventListener('click',function(){
+        card.classList.remove('show');
+        pcMention(name);
+      });
+      card.classList.add('show');
+    });
+  };
+
+  window.pcOpenBotPick=function(){
+    if(!myPass){say('log in first');return;}
+    pcBuildBotGrid('');
+    document.getElementById('pc-botsearch').value='';
+    document.getElementById('pc-botpick').classList.add('show');
+  };
+
+  window.pcBuildBotGrid=function(filter){
+    var grid=document.getElementById('pc-botgrid');
+    if(!grid) return;
+    grid.innerHTML='';
+    var f=(filter||'').toLowerCase();
+    BOTS.forEach(function(slug){
+      var label=botLabel(slug);
+      if(f && label.toLowerCase().indexOf(f)===-1) return;
+      var it=document.createElement('div');
+      it.className='pc-botitem'+(myFavBot===slug?' sel':'');
+      it.innerHTML='<img src="'+BOTBASE+slug+'.png"><span>'+esc(label)+'</span>';
+      it.addEventListener('click',function(){
+        var n=nameEl.value.trim();
+        sb.from('users').update({fav_bot:slug}).eq('name',n).then(function(){
+          myFavBot=slug;
+          pcBuildBotGrid(document.getElementById('pc-botsearch').value);
+          updateFavBtn();
+          say('favorite saved');
+        });
+      });
+      grid.appendChild(it);
+    });
+  };
+
+  window.pcClearBot=function(){
+    var n=nameEl.value.trim();
+    sb.from('users').update({fav_bot:null}).eq('name',n).then(function(){
+      myFavBot=null;
+      pcBuildBotGrid(document.getElementById('pc-botsearch').value);
+      updateFavBtn();
+      say('cleared');
+    });
+  };
+
+  function updateFavBtn(){
+    var b=document.getElementById('pc-favbtn');
+    if(b) b.textContent = myFavBot ? botLabel(myFavBot) : 'choose';
+  }
+
   function pingTyping(){
     var n=nameEl.value.trim();
     if(!n) return;
@@ -153,12 +243,13 @@
   function verifyName(n){
     sb.from('users').select('*').eq('name',n).then(function(r){
       var rows=r.data||[];
-      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;myBadge=null;updateAdminUI();return;}
+      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;myBadge=null;myFavBot=null;myAbout=null;updateAdminUI();return;}
       var u=rows[0];
-      if(u.password&&u.password===myPass){myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;}
-      else if(u.password){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;myBadge=null;}
-      else {myLevel=2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;}
+      if(u.password&&u.password===myPass){myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;myFavBot=u.fav_bot;myAbout=u.about;}
+      else if(u.password){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;myBadge=null;myFavBot=null;myAbout=null;}
+      else {myLevel=2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;myFavBot=u.fav_bot;myAbout=u.about;}
       updateAdminUI();
+      updateFavBtn();
     });
   }
 
@@ -166,7 +257,10 @@
     if(!myPass){say('log in first');return;}
     document.getElementById('pc-avpreview').src = myAvatar||'';
     document.getElementById('pc-profurl').value = myProfUrl||'';
+    var ab=document.getElementById('pc-aboutinput');
+    if(ab) ab.value = myAbout||'';
     pcBuildColors();
+    updateFavBtn();
     updateAdminUI();
     document.getElementById('pc-profile').classList.add('show');
   };
@@ -174,6 +268,7 @@
 
   window.pcLogout=function(){
     myPass=null; myLevel=1; myAvatar=null; myProfUrl=null; myColor=null; myBadge=null;
+    myFavBot=null; myAbout=null;
     localStorage.removeItem('pc_me');
     nameEl.value='';
     pcCloseProfile();
@@ -185,8 +280,10 @@
   window.pcSaveProfile=function(){
     var n=nameEl.value.trim();
     var url=document.getElementById('pc-profurl').value.trim()||null;
-    sb.from('users').update({profile_url:url}).eq('name',n).then(function(){
-      myProfUrl=url; say('profile saved'); pcCloseProfile();
+    var ab=document.getElementById('pc-aboutinput');
+    var about=ab?ab.value.trim()||null:null;
+    sb.from('users').update({profile_url:url,about:about}).eq('name',n).then(function(){
+      myProfUrl=url; myAbout=about; say('profile saved'); pcCloseProfile();
     });
   };
 
@@ -279,7 +376,7 @@
     if(!p){msg.textContent='enter a password';return;}
     sb.from('users').select('*').eq('name',n).then(function(r){
       var rows=r.data||[];
-      function done(){document.getElementById('pc-pw').classList.remove('show');updateAdminUI();}
+      function done(){document.getElementById('pc-pw').classList.remove('show');updateAdminUI();updateFavBtn();}
       if(!rows.length){
         sb.from('users').insert({name:n,password:p,level:2}).then(function(){
           myPass=p;myLevel=2;
@@ -298,7 +395,7 @@
         return;
       }
       if(u.password===p){
-        myPass=p;myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;
+        myPass=p;myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;myFavBot=u.fav_bot;myAbout=u.about;
         localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
         done();say('logged in');load();
         return;
@@ -342,6 +439,9 @@
 
   nameEl.addEventListener('blur',function(){var n=nameEl.value.trim();if(n)verifyName(n);});
   document.getElementById('pc-pwinput').addEventListener('keydown',function(e){if(e.key==='Enter')pcPwSubmit();});
+
+  var bs=document.getElementById('pc-botsearch');
+  if(bs) bs.addEventListener('input',function(){ pcBuildBotGrid(this.value); });
 
   document.getElementById('pc-text').addEventListener('input',function(){
     if(this.value.trim()) pingTyping();
@@ -496,8 +596,8 @@
           bannedPrints=brows.filter(function(x){return x.fingerprint;}).map(function(x){return x.fingerprint;});
           var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
           sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:false}).limit(500).then(function(r0){
-            var r={data:(r0.data||[]).slice().reverse()};
-            var rows=r.data||[],box=document.getElementById('pc-messages');
+            var rows=(r0.data||[]).slice().reverse();
+            var box=document.getElementById('pc-messages');
             var wasFirst=firstLoad;
             if(!firstLoad && rows.length>lastCount) playBeep();
             var newMax=rows.length?rows[rows.length-1].id:0;
@@ -546,13 +646,12 @@
                 tools+='</div></div>';
               }
               var badgeHtml = m.badge ? '<img class="pc-badge" src="'+m.badge+'" title="supporter ♡" onclick="pcBadgePop(\''+m.badge+'\')" style="cursor:pointer">' : '';
-              var rawName = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
-              var nameHtml = badgeHtml + '<span onclick="pcMention(\''+esc(m.name)+'\')" style="cursor:pointer">'+rawName+'</span>';
+              var nameHtml = '<span onclick="pcOpenCard(\''+esc(m.name)+'\')" style="cursor:pointer">'+esc(m.name)+'</span>';
               var colorStyle = m.name_color ? ' style="color:'+m.name_color+'"' : '';
               var body='';
               if(m.text)body+=esc(censor(m.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
               if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
-              d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme"'+colorStyle+'>'+nameHtml+'</div><div class="pc-body">'+body+'</div>';
+              d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme"'+colorStyle+'>'+badgeHtml+nameHtml+'</div><div class="pc-body">'+body+'</div>';
               box.appendChild(d);
             });
 
