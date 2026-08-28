@@ -490,7 +490,8 @@
           bannedList=brows.map(function(x){return x.name;});
           bannedPrints=brows.filter(function(x){return x.fingerprint;}).map(function(x){return x.fingerprint;});
           var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
-          sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:true}).then(function(r){
+          sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:false}).limit(100).then(function(r0){
+            var r={data:(r0.data||[]).slice().reverse()};
             var rows=r.data||[],box=document.getElementById('pc-messages');
             var wasFirst=firstLoad;
             if(!firstLoad && rows.length>lastCount) playBeep();
