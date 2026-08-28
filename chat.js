@@ -3,7 +3,7 @@
     "https://vhrjnaahofaqnggbdgbj.supabase.co",
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZocmpuYWFob2ZhcW5nZ2JkZ2JqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc3NzQxMjQsImV4cCI6MjEwMzM1MDEyNH0.Z4A-IDO8XtJCNEGyeCdBPtGi0jC3FyrTi__1J3rpZ1I"
   );
-  var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null, myColor=null;
+  var myLevel=1, myAvatar=null, myPass=null, myProfUrl=null, myColor=null, myBadge=null;
   var bannedList=[], bannedPrints=[], chatPaused=false, regOnly=false;
   var filterList=[], blockLinks=false, antiSpam=true, sendTimes=[];
   var pinnedId=null, pinnedRow=null;
@@ -148,11 +148,11 @@
   function verifyName(n){
     sb.from('users').select('*').eq('name',n).then(function(r){
       var rows=r.data||[];
-      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;updateAdminUI();return;}
+      if(!rows.length){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;myBadge=null;updateAdminUI();return;}
       var u=rows[0];
-      if(u.password&&u.password===myPass){myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;}
-      else if(u.password){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;}
-      else {myLevel=2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;}
+      if(u.password&&u.password===myPass){myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;}
+      else if(u.password){myLevel=1;myAvatar=null;myProfUrl=null;myColor=null;myBadge=null;}
+      else {myLevel=2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;}
       updateAdminUI();
     });
   }
@@ -168,7 +168,7 @@
   window.pcCloseProfile=function(){document.getElementById('pc-profile').classList.remove('show');};
 
   window.pcLogout=function(){
-    myPass=null; myLevel=1; myAvatar=null; myProfUrl=null; myColor=null;
+    myPass=null; myLevel=1; myAvatar=null; myProfUrl=null; myColor=null; myBadge=null;
     localStorage.removeItem('pc_me');
     nameEl.value='';
     pcCloseProfile();
@@ -293,7 +293,7 @@
         return;
       }
       if(u.password===p){
-        myPass=p;myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;
+        myPass=p;myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;
         localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
         done();say('logged in');load();
         return;
@@ -507,11 +507,12 @@
             if(pinnedRow){
               var pm=pinnedRow;
               var ppic=pm.avatar_url?'<img class="pc-pic" src="'+pm.avatar_url+'">':'';
+              var pbadge=pm.badge?'<img class="pc-badge" src="'+pm.badge+'">':'';
               var pcolor=pm.name_color?' style="color:'+pm.name_color+'"':'';
               var pbody='';
               if(pm.text)pbody+=esc(censor(pm.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
               if(pm.image_url)pbody+='<img src="'+pm.image_url+'" onclick="pcZoom(\''+pm.image_url+'\')">';
-              pinBox.innerHTML='<span class="pc-pinlabel">♡ pinned ♡</span><div class="pc-msg pc-lvl'+(pm.level||1)+'">'+ppic+'<div class="pc-nme"'+pcolor+'>'+esc(pm.name)+'</div><div class="pc-body">'+pbody+'</div></div>';
+              pinBox.innerHTML='<span class="pc-pinlabel">♡ pinned ♡</span><div class="pc-msg pc-lvl'+(pm.level||1)+'">'+ppic+'<div class="pc-nme"'+pcolor+'>'+pbadge+esc(pm.name)+'</div><div class="pc-body">'+pbody+'</div></div>';
               pinBox.style.display='block';
             } else {
               pinBox.style.display='none';
@@ -538,8 +539,9 @@
                 tools+='<button onclick="pcSoon()">private message</button>';
                 tools+='</div></div>';
               }
+              var badgeHtml = m.badge ? '<img class="pc-badge" src="'+m.badge+'">' : '';
               var rawName = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
-              var nameHtml = '<span onclick="pcMention(\''+esc(m.name)+'\')" style="cursor:pointer">'+rawName+'</span>';
+              var nameHtml = badgeHtml + '<span onclick="pcMention(\''+esc(m.name)+'\')" style="cursor:pointer">'+rawName+'</span>';
               var colorStyle = m.name_color ? ' style="color:'+m.name_color+'"' : '';
               var body='';
               if(m.text)body+=esc(censor(m.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
@@ -619,7 +621,7 @@
   function ins(n,t,img){
     clearTyping();
     sendTimes.push(Date.now());
-    sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,name_color:myColor,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
+    sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,name_color:myColor,badge:myBadge,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
       document.getElementById('pc-text').value='';
       document.getElementById('pc-imgfile').value='';
       document.getElementById('pc-imgpreview').style.display='none';
