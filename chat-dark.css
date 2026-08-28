@@ -126,10 +126,12 @@ align-items: center; justify-content: center; padding: 20px; box-sizing: border-
 
 .pc-badge {
   height: 1.1em; vertical-align: -0.15em; margin-right: 3px;
-  position: relative; cursor: default;
+  cursor: default;
   transition: transform .15s ease;
+  transform-origin: center center;
+  will-change: transform;
 }
-.pc-badge:hover { transform: scale(1.25); }
+.pc-badge:hover { transform: scale(1.2); }
 
 .pc-tab { display: inline-block; margin-top: 8px; background: #1a1a1a; color: #e79fc4; border: 2px solid #f3cddd; border-radius: 999px; padding: 7px 14px; font-size: 12px; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.4); user-select: none; font-family: 'Pixelify Sans', cursive; }
 
