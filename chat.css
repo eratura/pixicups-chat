@@ -124,11 +124,11 @@ align-items: center; justify-content: center; padding: 20px; box-sizing: border-
 #pc-cardname { font-size: 15px; font-weight: bold; }
 #pc-cardjoined { font-size: 11px; color: #aaa; }
 #pc-cardbot { font-size: 12px; text-align: center; }
-#pc-cardbot img { width: 42px; height: 42px; object-fit: cover; display: block; margin: 4px auto 2px; clip-path: path('M21 38 C21 38 2 25 2 13 C2 6 7 2 12 2 C16 2 20 5 21 8 C22 5 26 2 30 2 C35 2 40 6 40 13 C40 25 21 38 21 38 Z'); }
+#pc-cardbot img { width: 42px; height: 42px; object-fit: cover; display: block; margin: 4px auto 2px; border-radius: 4px; }
 #pc-cardabout { font-size: 12px; max-width: 240px; text-align: center; line-height: 1.5; }
 #pc-botgrid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 280px; max-height: 260px; overflow-y: auto; }
 .pc-botitem { width: 60px; cursor: pointer; text-align: center; font-size: 9px; }
-.pc-botitem img { width: 48px; height: 48px; object-fit: cover; display: block; margin: 0 auto 2px; clip-path: path('M24 43 C24 43 3 29 3 15 C3 7 8 3 14 3 C19 3 23 6 24 9 C25 6 29 3 34 3 C40 3 45 7 45 15 C45 29 24 43 24 43 Z'); }
+.pc-botitem img { width: 48px; height: 48px; object-fit: cover; display: block; margin: 0 auto 2px; border-radius: 4px; }
 .pc-botitem.sel img { outline: 2px solid #e79fc4; outline-offset: 1px; }
 #pc-aboutinput { width: 230px; height: 60px; padding: 6px 8px; border: 1px solid #ddd; font-size: 12px; font-family: inherit; resize: none; }
 
