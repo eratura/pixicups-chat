@@ -24,6 +24,7 @@
   var typingTimer=null, lastTypingPing=0;
   var soundOn=false, lastCount=0, firstLoad=true;
   var lastMaxId=0, sending=false;
+  var MSG_LIMIT=200;
   var BEEP_URL = "https://eratura.github.io/pixicups-chat/750607__deadrobotmusic__notification-sound-1.wav";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
 
@@ -96,9 +97,10 @@
   };
 
   window.pcOpenCard=function(name){
-    sb.from('users').select('name,avatar_url,created_at,fav_bot,about,name_color,badge').eq('name',name).then(function(r){
+    var card=document.getElementById('pc-card');
+    if(!card){ pcMention(name); return; }
+    sb.from('users').select('name,avatar_url,created_at,fav_bot,about,name_color').eq('name',name).then(function(r){
       var rows=r.data||[];
-      var card=document.getElementById('pc-card');
       var u=rows[0];
       document.getElementById('pc-cardpic').src = (u&&u.avatar_url)||'';
       var nm=document.getElementById('pc-cardname');
@@ -202,12 +204,12 @@
 
   window.pcPin=function(id){
     sb.from('settings').update({value:String(id)}).eq('key','pinned').then(function(){
-      pinnedId=id; say('pinned'); load();
+      pinnedId=id; say('pinned'); loadSlow(); loadMessages();
     });
   };
   window.pcUnpin=function(){
     sb.from('settings').update({value:''}).eq('key','pinned').then(function(){
-      pinnedId=null; say('unpinned'); load();
+      pinnedId=null; say('unpinned'); loadSlow(); loadMessages();
     });
   };
 
@@ -274,7 +276,7 @@
     pcCloseProfile();
     updateAdminUI();
     say('logged out');
-    load();
+    loadMessages();
   };
 
   window.pcSaveProfile=function(){
@@ -290,7 +292,7 @@
   window.pcClearAll=function(){
     ask('Delete ALL messages? This cannot be undone.',function(){
       sb.from('messages').delete().neq('id',0).then(function(){
-        say('chat cleared'); pcCloseProfile(); load();
+        say('chat cleared'); pcCloseProfile(); loadMessages();
       });
     });
   };
@@ -350,7 +352,7 @@
           sb.from('bans').delete().eq('name',b.name).then(function(){
             say(b.name+' unbanned');
             pcOpenBanList();
-            load();
+            loadSlow();
           });
         });
         row.appendChild(nm); row.appendChild(btn);
@@ -381,7 +383,7 @@
         sb.from('users').insert({name:n,password:p,level:2}).then(function(){
           myPass=p;myLevel=2;
           localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
-          done();say('name claimed');load();
+          done();say('name claimed');loadMessages();
         });
         return;
       }
@@ -390,14 +392,14 @@
         sb.from('users').update({password:p,level:2}).eq('name',n).then(function(){
           myPass=p;myLevel=2;
           localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
-          done();say('name claimed');load();
+          done();say('name claimed');loadMessages();
         });
         return;
       }
       if(u.password===p){
         myPass=p;myLevel=u.level||2;myAvatar=u.avatar_url;myProfUrl=u.profile_url;myColor=u.name_color;myBadge=u.badge;myFavBot=u.fav_bot;myAbout=u.about;
         localStorage.setItem('pc_me',JSON.stringify({name:n,pass:p}));
-        done();say('logged in');load();
+        done();say('logged in');loadMessages();
         return;
       }
       msg.textContent='wrong password';
@@ -471,12 +473,12 @@
 
   window.pcBan=function(name,print){
     ask('Ban '+name+'?',function(){
-      sb.from('bans').insert({name:name,fingerprint:print||null}).then(function(){say(name+' banned');load();});
+      sb.from('bans').insert({name:name,fingerprint:print||null}).then(function(){say(name+' banned');loadSlow();loadMessages();});
     });
   };
   window.pcUnban=function(name){
     ask('Unban '+name+'?',function(){
-      sb.from('bans').delete().eq('name',name).then(function(){say(name+' unbanned');load();});
+      sb.from('bans').delete().eq('name',name).then(function(){say(name+' unbanned');loadSlow();loadMessages();});
     });
   };
 
@@ -517,7 +519,7 @@
       sb.from('messages').delete().eq('name',name).then(function(){
         say('deleted all from '+name);
         pcOpenUsers();
-        load();
+        loadMessages();
       });
     });
   };
@@ -570,110 +572,112 @@
     });
   };
 
-  function load(){
+  function loadSlow(){
     sb.from('filters').select('word').then(function(fres){
       filterList=(fres.data||[]).map(function(x){return x.word;});
-      sb.from('settings').select('*').then(function(sres){
-        var srows=sres.data||[];
-        srows.forEach(function(s){
-          if(s.key==='paused') chatPaused = s.value==='true';
-          if(s.key==='regonly') regOnly = s.value==='true';
-          if(s.key==='blocklinks') blockLinks = s.value==='true';
-          if(s.key==='antispam') antiSpam = s.value==='true';
-          if(s.key==='pinned') pinnedId = s.value ? parseInt(s.value) : null;
-        });
-        updateAdminUI();
-        showTyping();
-        var ph=document.getElementById('pc-text');
-        if(ph){
-          if(chatPaused && myLevel<4) ph.placeholder='chat is paused';
-          else if(regOnly && myLevel<2) ph.placeholder='members only — log in';
-          else ph.placeholder='message';
-        }
-        sb.from('bans').select('*').then(function(bres){
-          var brows=bres.data||[];
-          bannedList=brows.map(function(x){return x.name;});
-          bannedPrints=brows.filter(function(x){return x.fingerprint;}).map(function(x){return x.fingerprint;});
-          var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
-          sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:false}).limit(500).then(function(r0){
-            var rows=(r0.data||[]).slice().reverse();
-            var box=document.getElementById('pc-messages');
-            var wasFirst=firstLoad;
-            if(!firstLoad && rows.length>lastCount) playBeep();
-            var newMax=rows.length?rows[rows.length-1].id:0;
-            lastCount=rows.length; firstLoad=false;
-            var atBottom=wasFirst||(box.scrollHeight-box.scrollTop-box.clientHeight<40);
-            box.innerHTML='';
-
-            var pinBox=document.getElementById('pc-pinned');
-            pinnedRow=null;
-            if(pinnedId){
-              for(var pi=0;pi<rows.length;pi++){ if(rows[pi].id===pinnedId){ pinnedRow=rows[pi]; break; } }
-            }
-            if(pinnedRow){
-              var pm=pinnedRow;
-              var ppic=pm.avatar_url?'<img class="pc-pic" src="'+pm.avatar_url+'">':'';
-              var pbadge=pm.badge?'<img class="pc-badge" src="'+pm.badge+'" title="supporter ♡" onclick="pcBadgePop(\''+pm.badge+'\')" style="cursor:pointer">':'';
-              var pcolor=pm.name_color?' style="color:'+pm.name_color+'"':'';
-              var pbody='';
-              if(pm.text)pbody+=esc(censor(pm.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
-              if(pm.image_url)pbody+='<img src="'+pm.image_url+'" onclick="pcZoom(\''+pm.image_url+'\')">';
-              pinBox.innerHTML='<span class="pc-pinlabel">♡ pinned ♡</span><div class="pc-msg pc-lvl'+(pm.level||1)+'">'+ppic+'<div class="pc-nme"'+pcolor+'>'+pbadge+esc(pm.name)+'</div><div class="pc-body">'+pbody+'</div></div>';
-              pinBox.style.display='block';
-            } else {
-              pinBox.style.display='none';
-            }
-
-            var myName=nameEl.value.trim();
-            rows.forEach(function(m){
-              var lvl=m.level||1,d=document.createElement('div');
-              d.className='pc-msg pc-lvl'+lvl;
-              if(!wasFirst && m.id>lastMaxId) d.className+=' pc-new';
-              var pic=m.avatar_url?'<img class="pc-pic" src="'+m.avatar_url+'" onclick="pcZoom(\''+m.avatar_url+'\')">':'';
-              var canDel=(myLevel===4)||(myPass&&m.name===myName);
-              var isBanned=bannedList.indexOf(m.name)!==-1;
-              var tools='';
-              if(canDel||myLevel===4||myPass){
-                tools='<div class="pc-tools"><span class="pc-dots" onclick="pcToggleTray('+m.id+',event)"><i class="fa fa-ellipsis-v"></i></span><div class="pc-tray" id="tray'+m.id+'">';
-                if(myLevel===4){
-                  if(pinnedId===m.id) tools+='<button onclick="pcUnpin()">unpin</button>';
-                  else tools+='<button onclick="pcPin('+m.id+')">pin message</button>';
-                  if(isBanned) tools+='<button onclick="pcUnban(\''+esc(m.name)+'\')">unban user</button>';
-                  else tools+='<button onclick="pcBan(\''+esc(m.name)+'\',\''+(m.fingerprint||'')+'\')">ban user</button>';
-                }
-                if(canDel) tools+='<button onclick="pcDel('+m.id+')">delete</button>';
-                tools+='<button onclick="pcSoon()">private message</button>';
-                tools+='</div></div>';
-              }
-              var badgeHtml = m.badge ? '<img class="pc-badge" src="'+m.badge+'" title="supporter ♡" onclick="pcBadgePop(\''+m.badge+'\')" style="cursor:pointer">' : '';
-              var nameHtml = '<span onclick="pcOpenCard(\''+esc(m.name)+'\')" style="cursor:pointer">'+esc(m.name)+'</span>';
-              var colorStyle = m.name_color ? ' style="color:'+m.name_color+'"' : '';
-              var body='';
-              if(m.text)body+=esc(censor(m.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
-              if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
-              d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme"'+colorStyle+'>'+badgeHtml+nameHtml+'</div><div class="pc-body">'+body+'</div>';
-              box.appendChild(d);
-            });
-
-            var newBtn=document.getElementById('pc-newmsg');
-            if(atBottom){
-              box.scrollTop=box.scrollHeight;
-              setTimeout(function(){ box.scrollTop=box.scrollHeight; },150);
-              setTimeout(function(){ box.scrollTop=box.scrollHeight; },600);
-              if(newBtn) newBtn.classList.remove('show');
-            } else if(newMax>lastMaxId && newBtn){
-              newBtn.classList.add('show');
-            }
-            lastMaxId=newMax;
-          });
-        });
+    });
+    sb.from('settings').select('*').then(function(sres){
+      var srows=sres.data||[];
+      srows.forEach(function(s){
+        if(s.key==='paused') chatPaused = s.value==='true';
+        if(s.key==='regonly') regOnly = s.value==='true';
+        if(s.key==='blocklinks') blockLinks = s.value==='true';
+        if(s.key==='antispam') antiSpam = s.value==='true';
+        if(s.key==='pinned') pinnedId = s.value ? parseInt(s.value) : null;
       });
+      updateAdminUI();
+      var ph=document.getElementById('pc-text');
+      if(ph){
+        if(chatPaused && myLevel<4) ph.placeholder='chat is paused';
+        else if(regOnly && myLevel<2) ph.placeholder='members only — log in';
+        else ph.placeholder='message';
+      }
+    });
+    sb.from('bans').select('*').then(function(bres){
+      var brows=bres.data||[];
+      bannedList=brows.map(function(x){return x.name;});
+      bannedPrints=brows.filter(function(x){return x.fingerprint;}).map(function(x){return x.fingerprint;});
+    });
+  }
+
+  function loadMessages(){
+    var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
+    sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:false}).limit(MSG_LIMIT).then(function(r0){
+      var rows=(r0.data||[]).slice().reverse();
+      var box=document.getElementById('pc-messages');
+      var wasFirst=firstLoad;
+      if(!firstLoad && rows.length>lastCount) playBeep();
+      var newMax=rows.length?rows[rows.length-1].id:0;
+      lastCount=rows.length; firstLoad=false;
+      var atBottom=wasFirst||(box.scrollHeight-box.scrollTop-box.clientHeight<40);
+      box.innerHTML='';
+
+      var pinBox=document.getElementById('pc-pinned');
+      pinnedRow=null;
+      if(pinnedId){
+        for(var pi=0;pi<rows.length;pi++){ if(rows[pi].id===pinnedId){ pinnedRow=rows[pi]; break; } }
+      }
+      if(pinnedRow){
+        var pm=pinnedRow;
+        var ppic=pm.avatar_url?'<img class="pc-pic" src="'+pm.avatar_url+'">':'';
+        var pbadge=pm.badge?'<img class="pc-badge" src="'+pm.badge+'" title="supporter ♡" onclick="pcBadgePop(\''+pm.badge+'\')" style="cursor:pointer">':'';
+        var pcolor=pm.name_color?' style="color:'+pm.name_color+'"':'';
+        var pbody='';
+        if(pm.text)pbody+=esc(censor(pm.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
+        if(pm.image_url)pbody+='<img src="'+pm.image_url+'" onclick="pcZoom(\''+pm.image_url+'\')">';
+        pinBox.innerHTML='<span class="pc-pinlabel">♡ pinned ♡</span><div class="pc-msg pc-lvl'+(pm.level||1)+'">'+ppic+'<div class="pc-nme"'+pcolor+'>'+pbadge+esc(pm.name)+'</div><div class="pc-body">'+pbody+'</div></div>';
+        pinBox.style.display='block';
+      } else if(pinBox){
+        pinBox.style.display='none';
+      }
+
+      var myName=nameEl.value.trim();
+      rows.forEach(function(m){
+        var lvl=m.level||1,d=document.createElement('div');
+        d.className='pc-msg pc-lvl'+lvl;
+        if(!wasFirst && m.id>lastMaxId) d.className+=' pc-new';
+        var pic=m.avatar_url?'<img class="pc-pic" src="'+m.avatar_url+'" onclick="pcZoom(\''+m.avatar_url+'\')">':'';
+        var canDel=(myLevel===4)||(myPass&&m.name===myName);
+        var isBanned=bannedList.indexOf(m.name)!==-1;
+        var tools='';
+        if(canDel||myLevel===4||myPass){
+          tools='<div class="pc-tools"><span class="pc-dots" onclick="pcToggleTray('+m.id+',event)"><i class="fa fa-ellipsis-v"></i></span><div class="pc-tray" id="tray'+m.id+'">';
+          if(myLevel===4){
+            if(pinnedId===m.id) tools+='<button onclick="pcUnpin()">unpin</button>';
+            else tools+='<button onclick="pcPin('+m.id+')">pin message</button>';
+            if(isBanned) tools+='<button onclick="pcUnban(\''+esc(m.name)+'\')">unban user</button>';
+            else tools+='<button onclick="pcBan(\''+esc(m.name)+'\',\''+(m.fingerprint||'')+'\')">ban user</button>';
+          }
+          if(canDel) tools+='<button onclick="pcDel('+m.id+')">delete</button>';
+          tools+='<button onclick="pcSoon()">private message</button>';
+          tools+='</div></div>';
+        }
+        var badgeHtml = m.badge ? '<img class="pc-badge" src="'+m.badge+'" title="supporter ♡" onclick="pcBadgePop(\''+m.badge+'\')" style="cursor:pointer">' : '';
+        var nameHtml = '<span onclick="pcOpenCard(\''+esc(m.name)+'\')" style="cursor:pointer">'+esc(m.name)+'</span>';
+        var colorStyle = m.name_color ? ' style="color:'+m.name_color+'"' : '';
+        var body='';
+        if(m.text)body+=esc(censor(m.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
+        if(m.image_url)body+='<img src="'+m.image_url+'" onclick="pcZoom(\''+m.image_url+'\')">';
+        d.innerHTML=tools+'<div class="pc-dtxt">'+ago(m.created_at)+'</div>'+pic+'<div class="pc-nme"'+colorStyle+'>'+badgeHtml+nameHtml+'</div><div class="pc-body">'+body+'</div>';
+        box.appendChild(d);
+      });
+
+      var newBtn=document.getElementById('pc-newmsg');
+      if(atBottom){
+        box.scrollTop=box.scrollHeight;
+        setTimeout(function(){ box.scrollTop=box.scrollHeight; },150);
+        setTimeout(function(){ box.scrollTop=box.scrollHeight; },600);
+        if(newBtn) newBtn.classList.remove('show');
+      } else if(newMax>lastMaxId && newBtn){
+        newBtn.classList.add('show');
+      }
+      lastMaxId=newMax;
     });
   }
 
   window.pcDel=function(id){
     ask('Delete this message?',function(){
-      sb.from('messages').delete().eq('id',id).then(load);
+      sb.from('messages').delete().eq('id',id).then(loadMessages);
     });
   };
 
@@ -687,6 +691,7 @@
     if(chatPaused && myLevel<4){say('chat is paused');return;}
     if(regOnly && myLevel<2){say('members only — log in to post');return;}
     if(bannedPrints.indexOf(myPrint)!==-1){say('you are banned');return;}
+    if(bannedList.indexOf(n)!==-1){say('you are banned');return;}
     if(blockLinks && myLevel<4 && /https?:\/\/|www\.|\.[a-z]{2,}\//i.test(t)){
       say('links are not allowed');
       return;
@@ -699,28 +704,22 @@
         return;
       }
     }
-    sb.from('bans').select('*').then(function(b){
-      var brows=b.data||[];
-      var nameHit=brows.some(function(x){return x.name===n;});
-      var printHit=brows.some(function(x){return x.fingerprint && x.fingerprint===myPrint;});
-      if(nameHit||printHit){say('you are banned');return;}
-      sb.from('users').select('*').eq('name',n).then(function(r){
-        var rows=r.data||[];
-        if(rows.length && rows[0].password && rows[0].password!==myPass){
-          say('that name is registered — log in first');
-          pcClaim();
-          return;
-        }
-        if(f&&myLevel<2){say('log in to post images');return;}
-        localStorage.setItem('pc_me',JSON.stringify({name:n,pass:myPass}));
-        if(f){
-          var path=Date.now()+'_'+Math.random().toString(36).slice(2);
-          sb.storage.from('chat-images').upload(path,f).then(function(u){
-            if(u.error){say('image failed');return;}
-            ins(n,t,sb.storage.from('chat-images').getPublicUrl(path).data.publicUrl);
-          });
-        } else ins(n,t,null);
-      });
+    sb.from('users').select('password').eq('name',n).then(function(r){
+      var rows=r.data||[];
+      if(rows.length && rows[0].password && rows[0].password!==myPass){
+        say('that name is registered — log in first');
+        pcClaim();
+        return;
+      }
+      if(f&&myLevel<2){say('log in to post images');return;}
+      localStorage.setItem('pc_me',JSON.stringify({name:n,pass:myPass}));
+      if(f){
+        var path=Date.now()+'_'+Math.random().toString(36).slice(2);
+        sb.storage.from('chat-images').upload(path,f).then(function(u){
+          if(u.error){say('image failed');return;}
+          ins(n,t,sb.storage.from('chat-images').getPublicUrl(path).data.publicUrl);
+        });
+      } else ins(n,t,null);
     });
   };
 
@@ -735,7 +734,7 @@
       if(res && res.error){ say('message failed — try again'); return; }
       document.getElementById('pc-imgfile').value='';
       document.getElementById('pc-imgpreview').style.display='none';
-      load();
+      loadMessages();
     }).catch(function(){
       sending=false;
       say('message failed — try again');
@@ -744,5 +743,9 @@
 
   document.getElementById('pc-text').addEventListener('keydown',function(e){if(e.key==='Enter')pcSend();});
   updateAdminUI();
-  load();setInterval(load,3000);
+  loadSlow();
+  loadMessages();
+  setInterval(loadMessages,3000);
+  setInterval(showTyping,3000);
+  setInterval(loadSlow,30000);
 })();
