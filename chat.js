@@ -9,7 +9,7 @@
   var pinnedId=null, pinnedRow=null;
   var typingTimer=null, lastTypingPing=0;
   var soundOn=false, lastCount=0, firstLoad=true;
-  var lastMaxId=0;
+  var lastMaxId=0, sending=false;
   var BEEP_URL = "https://eratura.github.io/pixicups-chat/750607__deadrobotmusic__notification-sound-1.wav";
   var nameEl=document.getElementById('pc-name'), statusEl=document.getElementById('pc-status');
 
@@ -573,6 +573,7 @@
   };
 
   window.pcSend=function(){
+    if(sending) return;
     var n=nameEl.value.trim();
     if(!n){say('enter a name');return;}
     var t=document.getElementById('pc-text').value.trim();
@@ -619,10 +620,12 @@
   };
 
   function ins(n,t,img){
+    sending=true;
     clearTyping();
     sendTimes.push(Date.now());
+    document.getElementById('pc-text').value='';
     sb.from('messages').insert({name:n,level:myLevel,avatar_url:myAvatar,profile_url:myProfUrl,name_color:myColor,badge:myBadge,text:t||null,image_url:img,fingerprint:myPrint}).then(function(){
-      document.getElementById('pc-text').value='';
+      sending=false;
       document.getElementById('pc-imgfile').value='';
       document.getElementById('pc-imgpreview').style.display='none';
       load();
