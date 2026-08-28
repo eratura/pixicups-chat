@@ -62,6 +62,11 @@
 
   window.pcSoon=function(){ say('private messages coming soon'); };
 
+  window.pcBadgePop=function(src){
+    document.getElementById('pc-badgebig').src=src;
+    document.getElementById('pc-badgepop').classList.add('show');
+  };
+
   window.pcScrollDown=function(){
     var box=document.getElementById('pc-messages');
     box.scrollTop=box.scrollHeight;
@@ -422,7 +427,7 @@
     body.innerHTML='loading...';
     document.getElementById('pc-users').classList.add('show');
     var cutoff=new Date(Date.now()-24*60*60*1000).toISOString();
-    sb.from('messages').select('name,fingerprint,created_at').gte('created_at',cutoff).order('created_at',{ascending:false}).then(function(r){
+    sb.from('messages').select('name,fingerprint,created_at').gte('created_at',cutoff).order('created_at',{ascending:false}).limit(500).then(function(r){
       var rows=r.data||[];
       if(!rows.length){ body.innerHTML='<div style="color:#999;padding:8px">no activity in 24h</div>'; return; }
       var seen={}, order=[];
@@ -490,7 +495,7 @@
           bannedList=brows.map(function(x){return x.name;});
           bannedPrints=brows.filter(function(x){return x.fingerprint;}).map(function(x){return x.fingerprint;});
           var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
-          sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:false}).limit(200).then(function(r0){
+          sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:false}).limit(500).then(function(r0){
             var r={data:(r0.data||[]).slice().reverse()};
             var rows=r.data||[],box=document.getElementById('pc-messages');
             var wasFirst=firstLoad;
@@ -508,7 +513,7 @@
             if(pinnedRow){
               var pm=pinnedRow;
               var ppic=pm.avatar_url?'<img class="pc-pic" src="'+pm.avatar_url+'">':'';
-              var pbadge=pm.badge?'<img class="pc-badge" src="'+pm.badge+'" title="supporter ♡">':'';
+              var pbadge=pm.badge?'<img class="pc-badge" src="'+pm.badge+'" title="supporter ♡" onclick="pcBadgePop(\''+pm.badge+'\')" style="cursor:pointer">':'';
               var pcolor=pm.name_color?' style="color:'+pm.name_color+'"':'';
               var pbody='';
               if(pm.text)pbody+=esc(censor(pm.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
@@ -540,7 +545,7 @@
                 tools+='<button onclick="pcSoon()">private message</button>';
                 tools+='</div></div>';
               }
-              var badgeHtml = m.badge ? '<img class="pc-badge" src="'+m.badge+'" title="supporter ♡">' : '';
+              var badgeHtml = m.badge ? '<img class="pc-badge" src="'+m.badge+'" title="supporter ♡" onclick="pcBadgePop(\''+m.badge+'\')" style="cursor:pointer">' : '';
               var rawName = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
               var nameHtml = badgeHtml + '<span onclick="pcMention(\''+esc(m.name)+'\')" style="cursor:pointer">'+rawName+'</span>';
               var colorStyle = m.name_color ? ' style="color:'+m.name_color+'"' : '';
