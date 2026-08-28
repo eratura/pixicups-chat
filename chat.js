@@ -507,7 +507,7 @@
             if(pinnedRow){
               var pm=pinnedRow;
               var ppic=pm.avatar_url?'<img class="pc-pic" src="'+pm.avatar_url+'">':'';
-              var pbadge=pm.badge?'<img class="pc-badge" src="'+pm.badge+'">':'';
+              var pbadge=pm.badge?'<img class="pc-badge" src="'+pm.badge+'" title="supporter ♡">':'';
               var pcolor=pm.name_color?' style="color:'+pm.name_color+'"':'';
               var pbody='';
               if(pm.text)pbody+=esc(censor(pm.text)).replace(/@([\w-]+)/g,'<span class="pc-mention">@$1</span>');
@@ -539,7 +539,7 @@
                 tools+='<button onclick="pcSoon()">private message</button>';
                 tools+='</div></div>';
               }
-              var badgeHtml = m.badge ? '<img class="pc-badge" src="'+m.badge+'">' : '';
+              var badgeHtml = m.badge ? '<img class="pc-badge" src="'+m.badge+'" title="supporter ♡">' : '';
               var rawName = m.profile_url ? '<a href="'+esc(m.profile_url)+'" target="_blank">'+esc(m.name)+'</a>' : esc(m.name);
               var nameHtml = badgeHtml + '<span onclick="pcMention(\''+esc(m.name)+'\')" style="cursor:pointer">'+rawName+'</span>';
               var colorStyle = m.name_color ? ' style="color:'+m.name_color+'"' : '';
