@@ -458,6 +458,15 @@
     }
   });
 
+    document.getElementById('pc-toggle').addEventListener('change',function(){
+    if(this.checked){
+      var box=document.getElementById('pc-messages');
+      [0,50,200,500].forEach(function(ms){
+        setTimeout(function(){ box.scrollTop=box.scrollHeight; },ms);
+      });
+    }
+  });
+
   window.pcToggleTray=function(id,ev){
     ev.stopPropagation();
     var all=document.querySelectorAll('.pc-tray');
