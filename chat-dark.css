@@ -14,9 +14,9 @@ text-align: left; position: relative; font-size: 15px;
 .pc-header { text-align: center; color: #e79fc4; font-size: 12px; padding: 10px 0 6px; flex: 0 0 auto; }
 #pc-messages {
 flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; min-height: 0;
-padding: 4px; background: #FFFFFF; text-align: left;
+padding: 4px; background: #000000; text-align: left;
 font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-font-size: 13px; color: #333; line-height: 1.4em;
+font-size: 13px; color: #e8e8e8; line-height: 1.4em;
 margin: 8px 10px 0; border-radius: 8px 8px 0 0;
 }
 .pc-msg { position: relative; margin: 0.15em 0.25em; padding: 0; word-wrap: break-word; }
