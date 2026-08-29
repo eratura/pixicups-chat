@@ -84,7 +84,7 @@
 
   window.pcScrollDown=function(){
     var box=document.getElementById('pc-messages');
-    box.scrollTop=box.scrollHeight;
+    box.scrollTop=0;
     var b=document.getElementById('pc-newmsg');
     if(b) b.classList.remove('show');
   };
@@ -452,18 +452,9 @@
   });
 
   document.getElementById('pc-messages').addEventListener('scroll',function(){
-    if(this.scrollHeight-this.scrollTop-this.clientHeight<40){
+    if(this.scrollTop > -40){
       var b=document.getElementById('pc-newmsg');
       if(b) b.classList.remove('show');
-    }
-  });
-
-    document.getElementById('pc-toggle').addEventListener('change',function(){
-    if(this.checked){
-      var box=document.getElementById('pc-messages');
-      [0,50,200,500].forEach(function(ms){
-        setTimeout(function(){ box.scrollTop=box.scrollHeight; },ms);
-      });
     }
   });
 
@@ -612,13 +603,13 @@
   function loadMessages(){
     var cutoff=new Date(Date.now()-30*24*60*60*1000).toISOString();
     sb.from('messages').select('*').gte('created_at',cutoff).order('created_at',{ascending:false}).limit(MSG_LIMIT).then(function(r0){
-      var rows=(r0.data||[]).slice().reverse();
+      var rows=(r0.data||[]);
       var box=document.getElementById('pc-messages');
       var wasFirst=firstLoad;
       if(!firstLoad && rows.length>lastCount) playBeep();
-      var newMax=rows.length?rows[rows.length-1].id:0;
+      var newMax=rows.length?rows[0].id:0;
       lastCount=rows.length; firstLoad=false;
-      var atBottom=wasFirst||(box.scrollHeight-box.scrollTop-box.clientHeight<40);
+      var atBottom=wasFirst||(box.scrollTop > -40);
       box.innerHTML='';
 
       var pinBox=document.getElementById('pc-pinned');
@@ -673,9 +664,7 @@
 
       var newBtn=document.getElementById('pc-newmsg');
       if(atBottom){
-        box.scrollTop=box.scrollHeight;
-        setTimeout(function(){ box.scrollTop=box.scrollHeight; },150);
-        setTimeout(function(){ box.scrollTop=box.scrollHeight; },600);
+        box.scrollTop=0;
         if(newBtn) newBtn.classList.remove('show');
       } else if(newMax>lastMaxId && newBtn){
         newBtn.classList.add('show');
